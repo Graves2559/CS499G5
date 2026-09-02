@@ -23,50 +23,33 @@ Objectives:
     -> Requires a running MongoDB instance and code to connect to it.
 2. Have mock data to import into the MongoDB database.
 
+Operations:
+1. Convert a file into a Data object based on its type.
+2. Import the Data object into MongoDB.
+3. Optionally delete all data from MongoDB (for testing purposes).
+
 '''
 
 # Preprocessor directives
-from pathlib import Path
-
 try:
-    from .Import import c_ImportData
-    from .Data import c_Data, c_ImageData, c_TextData
+    from .mainHelper import c_MainHelper
 except ImportError:
-    from Import import c_ImportData
-    from Data import c_Data, c_ImageData, c_TextData
+    from mainHelper import c_MainHelper
 
 
 # ------------------------------------------------------------------------------------------------------------
-
-test = True
-
+    
 def main():
-    result = f_dataConvert_Import("Data.txt")
+    helper = c_MainHelper(test=True, deleteAll=False)
+    # helper.f_dataConvert_Import("Data.txt")
 
-    result = f_dataConvert_Import("MockPicture.png")
+    # helper.f_dataConvert_Import("MockPicture.png")
+
+    helper.f_retrieveDataDB("MockPicture.png")
 
 # ------------------------------------------------------------------------------------------------------------
 
 
-def f_dataObjectConvert(fpFilePath: Path) -> c_Data: # returns a Data object based on the file type
-    if (fpFilePath.suffix == ".png" or fpFilePath.suffix == ".jpg" or fpFilePath.suffix == ".jpeg"):
-        return c_ImageData(str(fpFilePath)) # data will be an instance of c_ImageData
-    elif (fpFilePath.suffix == ".txt"):
-        return c_TextData(str(fpFilePath)) # data will be an instance of c_TextData
-    else:
-        raise ValueError("Unsupported file type")
-
-def f_importData(pData: c_Data): # returns the imported Data object (not sure yet whether to return anything or not)
-    pImporter = c_ImportData(pData)
-    pImporter.f_parse()
-    pImporter.f_import_toMongo()
-    return pImporter.f_get_data()
-
-def f_dataConvert_Import(acFileName: str): # dataObjectConvert() + importData()
-    fpFilePath = Path(__file__).with_name(acFileName)
-    dataObject = f_dataObjectConvert(fpFilePath)
-    if test:
-        print(f_importData(dataObject))
 
 # ------------------------------------------------------------------------------------------------------------
 
