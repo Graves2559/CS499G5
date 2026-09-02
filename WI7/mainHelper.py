@@ -60,3 +60,10 @@ class c_MainHelper:
         pImporter.f_parse()
         pImporter.f_show()
         return pImporter.f_get_data()
+
+    def f_deleteDataDB(self, acFileName: str) -> None:                 # deletes data from the database based on the file type
+        fpFilePath = Path(__file__).with_name(acFileName)
+        data = self.f_dataObjectConvert(fpFilePath)
+        pImporter = c_DBManager.f_get_instance(data)
+        pImporter.f_parse()
+        pImporter.f_deleteData()

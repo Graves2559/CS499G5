@@ -37,15 +37,19 @@ except ImportError:
     from mainHelper import c_MainHelper
 
 
+# Note: Testing mode (True) is for testing the import function works correctly by showing the imported data
+
 # ------------------------------------------------------------------------------------------------------------
     
 def main():
-    helper = c_MainHelper(test=True, deleteAll=False)
+    helper = c_MainHelper(test=False, deleteAll=False)
     # helper.f_dataConvert_Import("Data.txt")
 
-    # helper.f_dataConvert_Import("MockPicture.png")
+    helper.f_dataConvert_Import("MockPicture.png")
 
     helper.f_retrieveDataDB("MockPicture.png")
+
+    # helper.f_deleteDataDB("MockPicture.png")
 
 # ------------------------------------------------------------------------------------------------------------
 

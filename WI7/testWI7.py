@@ -267,6 +267,33 @@ class c_DBManagerStorageTests(unittest.TestCase):
         pMockGridFS.return_value.put.assert_called_once()
         pMockCollection.insert_one.assert_not_called()
 
+    @patch("WI7.DBManager.MongoClient")
+    def test_delete_image_removes_binary_and_gridfs_data(self, pMockClient):
+        pMockInstance = MagicMock()
+        pMockClient.return_value = pMockInstance
+        pMockDb = MagicMock()
+        pMockCollection = MagicMock()
+        pMockGridFSFiles = MagicMock()
+        pMockGridFSChunks = MagicMock()
+        pMockGridFSFiles.find.return_value = [{"_id": "gridfs-id"}]
+        pMockInstance.__getitem__.return_value = pMockDb
+        pMockDb.__getitem__.side_effect = lambda key: {
+            "Test": pMockCollection,
+            "fs.files": pMockGridFSFiles,
+            "fs.chunks": pMockGridFSChunks
+        }[key]
+
+        manager = c_DBManager.f_get_instance(c_ImageData("photo.png"))
+        manager.f_deleteData()
+
+        pMockCollection.delete_many.assert_called_once_with({"filename": "photo.png"})
+        pMockGridFSFiles.delete_many.assert_called_once_with(
+            {"_id": {"$in": ["gridfs-id"]}}
+        )
+        pMockGridFSChunks.delete_many.assert_called_once_with(
+            {"files_id": {"$in": ["gridfs-id"]}}
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

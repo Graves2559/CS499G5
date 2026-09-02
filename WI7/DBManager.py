@@ -88,12 +88,22 @@ class c_DBManager:
 
         try:
             if isinstance(self.data, Data.c_TextData):
-                aiIds = [doc["_id"] for doc in self.result if isinstance(doc, dict)]
+                aiIds = [doc["_id"] for doc in self.result if isinstance(doc, dict)]    # doc[_id] is the unique identifier of the document in MongoDB
                 if aiIds:
                     pCollection.delete_many({"_id": {"$in": aiIds}})
             elif isinstance(self.data, Data.c_ImageData):
-                # Handle image data deletion if needed
-                pass
+                acFileName = Path(self.data.f_get_file_path()).name
+                pCollection.delete_many({"filename": acFileName})
+
+                pGridFSFiles = pDb["fs.files"]                  # fs is MongoDB's GridFS collection for file metadata
+                pGridFSChunks = pDb["fs.chunks"]                # fs.chunks stores the actual file data in chunks
+                aFileIds = [
+                    document["_id"]
+                    for document in pGridFSFiles.find({"filename": acFileName})
+                ]
+                if aFileIds:
+                    pGridFSFiles.delete_many({"_id": {"$in": aFileIds}})
+                    pGridFSChunks.delete_many({"files_id": {"$in": aFileIds}})
 
             pClient.close()
         except Exception as e:
