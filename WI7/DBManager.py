@@ -14,11 +14,11 @@ Class for importing data into MongoDB.
 Uses dependency injection for data.txt input. 
 '''
 
-import json
-import logging
-import mimetypes
+import json                     # for handling JSON data
+import logging                  # for logging errors and information
+import mimetypes                # for image file (binary form, ≤16 MB). Tells MongoDB what kind of file the binary data represents.
 import traceback                # To detail what line an error occurred on
-from pathlib import Path
+from pathlib import Path        # for handling file paths
 from PIL import Image           # If not installed in the mongoenv, run: python -m pip install Pillow pymongo
 
 try:
