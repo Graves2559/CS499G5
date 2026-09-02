@@ -64,7 +64,7 @@ class c_DBManagerTests(unittest.TestCase):
 
         self.assertEqual(pImporter.f_get_data(), [])
 
-    # parses image data from a JSON lines file
+    # rejects text data saved with an image extension
     def test_image_data_parses_json_lines(self):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".png", delete=False) as file:
             file.write("fake image data")
@@ -75,7 +75,7 @@ class c_DBManagerTests(unittest.TestCase):
 
         pImporter.f_parse()
 
-        self.assertEqual(pImporter.f_get_data(), ["fake image data"])
+        self.assertEqual(pImporter.f_get_data(), [])
 
     # Verifies that an incorrect format for either text is handled appropriately
     def test_parse_incorrect_format_returns_empty_list(self):
@@ -129,8 +129,7 @@ class c_MongoDBConnectionTests(unittest.TestCase):
         pImporter = c_DBManager(c_TextData("test.txt"))
         result = pImporter.f_connect_toMongo()
         
-        self.assertTrue(result)
-        pMockInstance.close.assert_called_once()
+        self.assertIs(result, pMockInstance)
     
     # verifies that connection check returns False on exception
     @patch('WI7.DBManager.MongoClient')
@@ -178,8 +177,14 @@ class c_MongoDBDeleteTests(unittest.TestCase):
         pMockClient.return_value = pMockInstance
         pMockDb = MagicMock()
         pMockCollection = MagicMock()
+        pMockGridFSFiles = MagicMock()
+        pMockGridFSChunks = MagicMock()
         pMockInstance.__getitem__.side_effect = lambda key: pMockDb if key == "admin" else None
-        pMockDb.__getitem__.return_value = pMockCollection
+        pMockDb.__getitem__.side_effect = lambda key: {
+            "Test": pMockCollection,
+            "fs.files": pMockGridFSFiles,
+            "fs.chunks": pMockGridFSChunks
+        }[key]
         pMockInstance.close = MagicMock()
         
         pImporter = c_DBManager(c_TextData("test.txt"))
@@ -187,6 +192,8 @@ class c_MongoDBDeleteTests(unittest.TestCase):
         
         # Verify delete_many was called with empty filter
         pMockCollection.delete_many.assert_called_once_with({})
+        pMockGridFSFiles.delete_many.assert_called_once_with({})
+        pMockGridFSChunks.delete_many.assert_called_once_with({})
     
     # verifies that delete handles Image objects gracefully
     @patch('WI7.DBManager.MongoClient')

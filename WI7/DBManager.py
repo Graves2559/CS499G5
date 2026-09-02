@@ -192,9 +192,14 @@ class c_DBManager:
                 iLineNumber = traceback.extract_stack()[-1].lineno
                 logger.exception(f"parse() failed to parse JSON at line {iLineNumber}")
         elif isinstance(self.data, Data.c_ImageData):
-            pImage = Image.open(fpFilePath)
-            self.data.f_add_image(pImage)
-            self.result = self.data.f_get_images()
+            try:
+                pImage = Image.open(fpFilePath)
+                self.data.f_add_image(pImage)
+                self.result = self.data.f_get_images()
+            except (Image.UnidentifiedImageError, OSError):
+                self.result = []
+                iLineNumber = traceback.extract_stack()[-1].lineno
+                logger.error(f"Invalid image file at line {iLineNumber}: {fpFilePath}")
         else:
             iLineNumber = traceback.extract_stack()[-1].lineno
             logger.error(f"Unsupported data type for parsing at line {iLineNumber}")
