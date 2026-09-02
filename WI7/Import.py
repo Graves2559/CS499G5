@@ -16,45 +16,49 @@ Uses dependency injection for data.txt input.
 
 import json
 import logging
-import Data
 from PIL import Image
+
+try:
+    from . import Data
+except ImportError:
+    import Data
 
 
 logger = logging.getLogger(__name__)
 
 
 class c_ImportData:
-    data: Data.Data # for using Data object to access its methods (getFilePath and getData)
+    pData: Data.c_Data # for using Data object to access its methods (getFilePath and getData)
     result: list[dict[str, object] | Image.Image]
 
-    def __init__(self, data: Data.Data) -> None:
-        self.data = data
+    def __init__(self, pData: Data.c_Data) -> None:
+        self.pData = pData
         self.result = []
 
     def f_import_toMongo(self) -> None:
-        # Code to import self.data into MongoDB goes here
+        # Code to import self.pData into MongoDB goes here
         pass
 
     def f_parse(self) -> None:
         # Minimum guarantee: self.data must be a Data object before parsing
-        if not isinstance(self.data, Data.Data):            # inverse guard clause
+        if not isinstance(self.pData, Data.c_Data):            # inverse guard clause
             logger.error("parse() requires a Data object")
             return
 
-        file_path = self.data.f_get_file_path()
+        fpFilePath = self.pData.f_get_file_path()
 
-        if isinstance(self.data, Data.TextData):
+        if isinstance(self.pData, Data.c_TextData):
             try:
-                with open(file_path, 'r') as file:
-                    self.result = [json.loads(line) for line in file if line.strip()]
+                with open(fpFilePath, 'r') as file:
+                    self.result = [json.loads(acLine) for acLine in file if acLine.strip()]
             except json.JSONDecodeError:
                 self.result = []
                 logger.exception("parse() failed to parse JSON")
-        elif isinstance(self.data, Data.ImageData):
-            image = Image.open(file_path)
-            self.data.f_add_image(image)
-            self.result = self.data.f_get_images()
-            image.show()
+        elif isinstance(self.pData, Data.c_ImageData):
+            pImage = Image.open(fpFilePath)
+            self.pData.f_add_image(pImage)
+            self.result = self.pData.f_get_images()
+            pImage.show()
         else:
             logger.error("Unsupported data type for parsing")
 

@@ -1,0 +1,1 @@
+"""WI7 project package."""
