@@ -29,13 +29,13 @@ class c_MainHelper:
             dbManager.f_deleteDataAll()
 
 
-    def f_dataConvert_Import(self, acFileName: str) -> list:
+    def f_dataConvert_Import(self, acFileName: str) -> list:            # dataObjectConvert() + importData()
         fpFilePath = Path(__file__).with_name(acFileName)
         data = self.f_dataObjectConvert(fpFilePath)
 
         return self.f_importData(data)
 
-    def f_dataObjectConvert(self, fpFilePath: Path) -> c_Data:
+    def f_dataObjectConvert(self, fpFilePath: Path) -> c_Data:              # returns a Data object based on the file type
         if fpFilePath.suffix.lower() in (".png", ".jpg", ".jpeg"):
             return c_ImageData(str(fpFilePath))
         elif fpFilePath.suffix.lower() == ".txt":
@@ -43,7 +43,7 @@ class c_MainHelper:
         else:
             raise ValueError("Unsupported file type")
 
-    def f_importData(self, data: c_Data) -> list:
+    def f_importData(self, data: c_Data) -> list:                       # returns the imported Data object 
         pImporter = c_DBManager.f_get_instance(data)
         pImporter.f_parse()
         pImporter.f_import_toMongo()
@@ -53,7 +53,7 @@ class c_MainHelper:
 
         return pImporter.f_get_data()
 
-    def f_retrieveDataDB(self, acFileName: str) -> list:
+    def f_retrieveDataDB(self, acFileName: str) -> list:                 # retrieves data from the database based on the file type
         fpFilePath = Path(__file__).with_name(acFileName)
         data = self.f_dataObjectConvert(fpFilePath)
         pImporter = c_DBManager.f_get_instance(data)
