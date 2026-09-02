@@ -18,15 +18,17 @@ except ImportError:
     from Data import c_Data, c_ImageData, c_TextData
 
 
-# A handler class for the main executable script
+# A support facade pattern for the main executable script
 class c_MainHelper:
-    def __init__(self, test: bool = False, deleteAll: bool = False) -> None:
+    def __init__(self, dbManager: c_DBManager | None = None, test: bool = False, deleteAll: bool = False) -> None:
+        self.dbManager = dbManager          # uses the provided DB manager for this class's database operations
         self.test = test
         self.deleteAll = deleteAll
 
         if deleteAll:
-            dbManager = c_DBManager.f_get_instance(None)
-            dbManager.f_deleteDataAll()
+            if self.dbManager is None:
+                raise ValueError("A DB manager is required when deleteAll is True")
+            self.dbManager.f_deleteDataAll()
 
 
     def f_dataConvert_Import(self, acFileName: str) -> list:            # dataObjectConvert() + importData()
@@ -44,26 +46,38 @@ class c_MainHelper:
             raise ValueError("Unsupported file type")
 
     def f_importData(self, data: c_Data) -> list:                       # returns the imported Data object 
-        pImporter = c_DBManager.f_get_instance(data)
+        if self.dbManager is None:
+            raise ValueError("A DB manager is required for database operations")
+        self.dbManager.data = data
+        self.dbManager.result = []
+        pImporter = self.dbManager
         pImporter.f_parse()
         pImporter.f_import_toMongo()
 
         if self.test:
             pImporter.f_show()
 
-        return pImporter.f_get_data()
+        return pImporter.f_get_data()   # Not really needed right now - but maybe for future.
 
     def f_retrieveDataDB(self, acFileName: str) -> list:                 # retrieves data from the database based on the file type
         fpFilePath = Path(__file__).with_name(acFileName)
         data = self.f_dataObjectConvert(fpFilePath)
-        pImporter = c_DBManager.f_get_instance(data)
+        if self.dbManager is None:
+            raise ValueError("A DB manager is required for database operations")
+        self.dbManager.data = data
+        self.dbManager.result = []
+        pImporter = self.dbManager
         pImporter.f_parse()
         pImporter.f_show()
-        return pImporter.f_get_data()
+        return pImporter.f_get_data()   # Not really needed right now - but maybe for future.
 
     def f_deleteDataDB(self, acFileName: str) -> None:                 # deletes data from the database based on the file type
         fpFilePath = Path(__file__).with_name(acFileName)
         data = self.f_dataObjectConvert(fpFilePath)
-        pImporter = c_DBManager.f_get_instance(data)
+        if self.dbManager is None:
+            raise ValueError("A DB manager is required for database operations")
+        self.dbManager.data = data
+        self.dbManager.result = []
+        pImporter = self.dbManager
         pImporter.f_parse()
         pImporter.f_deleteData()

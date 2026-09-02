@@ -30,10 +30,11 @@ Operations:
 
 '''
 
-# Preprocessor directives
 try:
+    from .DBManager import c_DBManager
     from .mainHelper import c_MainHelper
 except ImportError:
+    from DBManager import c_DBManager
     from mainHelper import c_MainHelper
 
 
@@ -42,12 +43,14 @@ except ImportError:
 # ------------------------------------------------------------------------------------------------------------
     
 def main():
-    helper = c_MainHelper(test=False, deleteAll=False)
+    dBM = c_DBManager.f_get_instance()
+
+    helper = c_MainHelper(dBM, test=False, deleteAll=True)
     # helper.f_dataConvert_Import("Data.txt")
 
-    helper.f_dataConvert_Import("MockPicture.png")
+    # helper.f_dataConvert_Import("MockPicture.png")
 
-    helper.f_retrieveDataDB("MockPicture.png")
+    # helper.f_retrieveDataDB("MockPicture.png")
 
     # helper.f_deleteDataDB("MockPicture.png")
 

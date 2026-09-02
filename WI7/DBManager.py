@@ -33,6 +33,7 @@ from gridfs import GridFS
 
 
 logger = logging.getLogger(__name__)
+_CONSTRUCTOR_TOKEN = object()
 
 
 # This class is a singleton, such that there is only one instance of it throughout the application.
@@ -47,22 +48,28 @@ class c_DBManager:
     
     data: Data.c_Data | None                            # for using Data object to access its methods (getFilePath and getData)
     result: list[dict[str, object] | Image.Image]       # Image(module from PIL).Image(an Image Object from said Module)
+                                                        # A list of all Data objects that have been parsed and are ready for database operations
+
 
     # Methods
 
     # None data type is for when no Data object is provided during initialization (for deleteDataAll operation (see mainHelper constructor))
-    def __new__(cls, data: Data.c_Data | None = None): # The cls parameter represents the class itself, used for creating a singleton instance
+    def __new__(cls, data: Data.c_Data | None = None, _token: object = None): # The cls parameter represents the class itself, used for creating a singleton instance
+        if _token is not _CONSTRUCTOR_TOKEN:                    # Ensures that the constructor is only called through the f_get_instance method
+            raise TypeError("Use c_DBManager.f_get_instance() to access the DB manager")
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, data: Data.c_Data | None = None) -> None:
+    def __init__(self, data: Data.c_Data | None = None, _token: object = None) -> None:
+        if _token is not _CONSTRUCTOR_TOKEN:
+            raise TypeError("Use c_DBManager.f_get_instance() to access the DB manager")
         self.data = data
         self.result = []
 
     @classmethod
     def f_get_instance(cls, data: Data.c_Data | None = None):
-        return cls(data)                               # Returns the singleton instance of the class
+        return cls(data, _CONSTRUCTOR_TOKEN)            # Returns the singleton instance of the class
 
     def f_connect_toMongo(self) -> MongoClient | None:
         try:
@@ -110,7 +117,7 @@ class c_DBManager:
             iLineNumber = traceback.extract_stack()[-1].lineno
             logger.exception(f"Failed to delete from MongoDB at line {iLineNumber}: {e}")
 
-    def f_deleteDataAll(self) -> None:
+    def f_deleteDataAll(self) -> None:              # Deletes all text and image files from MongoDB
         try:
             pClient = MongoClient(self.MONGODB_URI)
             pDb = pClient[self.DB_NAME]
@@ -129,10 +136,11 @@ class c_DBManager:
             iLineNumber = traceback.extract_stack()[-1].lineno
             logger.exception(f"Failed to delete from MongoDB at line {iLineNumber}: {e}")
 
-    def f_get_data(self) -> list[dict[str, object] | Image.Image]:
+    def f_get_data(self) -> list[dict[str, object] | Image.Image]:          # Not really used right now - just used as a getter for the future
+        # Simply returns the result list, which contains the data retrieved from the Data object
         return self.result
 
-    def f_import_toMongo(self) -> None:
+    def f_import_toMongo(self) -> None:         # imports some data (text, image) into MongoDB
         try:
             pClient = MongoClient(self.MONGODB_URI)
             pDb = pClient[self.DB_NAME]
@@ -174,7 +182,7 @@ class c_DBManager:
             iLineNumber = traceback.extract_stack()[-1].lineno
             logger.exception(f"Failed to import to MongoDB at line {iLineNumber}: {e}")
 
-    def f_parse(self) -> None:
+    def f_parse(self) -> None:                                      # Parse the data file and populate the result list accordingly
         # Minimum guarantee: self.data must be a Data object before parsing
         if not isinstance(self.data, Data.c_Data):            # inverse guard clause
             iLineNumber = traceback.extract_stack()[-1].lineno
@@ -204,7 +212,7 @@ class c_DBManager:
             iLineNumber = traceback.extract_stack()[-1].lineno
             logger.error(f"Unsupported data type for parsing at line {iLineNumber}")
 
-    def f_show(self) -> None:
+    def f_show(self) -> None:                                         # Show a preview of the data (first and last items if more than 2)    
         # Size of the preview list optimization
         if len(self.result) <= 2:
             aPreview = self.result

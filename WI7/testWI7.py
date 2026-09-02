@@ -45,7 +45,7 @@ class c_DBManagerTests(unittest.TestCase):
             fpFilePath = file.name
 
         self.addCleanup(Path(fpFilePath).unlink)
-        pImporter = c_DBManager(c_TextData(fpFilePath))
+        pImporter = c_DBManager.f_get_instance(c_TextData(fpFilePath))
 
         pImporter.f_parse()
 
@@ -58,7 +58,7 @@ class c_DBManagerTests(unittest.TestCase):
             fpFilePath = file.name
 
         self.addCleanup(Path(fpFilePath).unlink)
-        pImporter = c_DBManager(c_TextData(fpFilePath))
+        pImporter = c_DBManager.f_get_instance(c_TextData(fpFilePath))
 
         pImporter.f_parse()
 
@@ -71,7 +71,7 @@ class c_DBManagerTests(unittest.TestCase):
             fpFilePath = file.name
 
         self.addCleanup(Path(fpFilePath).unlink)
-        pImporter = c_DBManager(c_ImageData(fpFilePath))
+        pImporter = c_DBManager.f_get_instance(c_ImageData(fpFilePath))
 
         pImporter.f_parse()
 
@@ -84,7 +84,7 @@ class c_DBManagerTests(unittest.TestCase):
             fpFilePath = file.name
 
         self.addCleanup(Path(fpFilePath).unlink)
-        pImporter = c_DBManager(c_TextData(fpFilePath))
+        pImporter = c_DBManager.f_get_instance(c_TextData(fpFilePath))
 
         pImporter.f_parse()
 
@@ -97,7 +97,7 @@ class c_DBManagerTests(unittest.TestCase):
             fpFilePath = file.name
 
         self.addCleanup(Path(fpFilePath).unlink)
-        pImporter = c_DBManager(c_ImageData(fpFilePath))
+        pImporter = c_DBManager.f_get_instance(c_ImageData(fpFilePath))
 
         pImporter.f_parse()
 
@@ -126,7 +126,7 @@ class c_MongoDBConnectionTests(unittest.TestCase):
         pMockClient.return_value = pMockInstance
         pMockInstance.close = MagicMock()
         
-        pImporter = c_DBManager(c_TextData("test.txt"))
+        pImporter = c_DBManager.f_get_instance(c_TextData("test.txt"))
         result = pImporter.f_connect_toMongo()
         
         self.assertIs(result, pMockInstance)
@@ -136,7 +136,7 @@ class c_MongoDBConnectionTests(unittest.TestCase):
     def test_connect_toMongo_failure(self, pMockClient):
         pMockClient.side_effect = Exception("Connection refused")
         
-        pImporter = c_DBManager(c_TextData("test.txt"))
+        pImporter = c_DBManager.f_get_instance(c_TextData("test.txt"))
         result = pImporter.f_connect_toMongo()
         
         self.assertFalse(result)
@@ -161,7 +161,7 @@ class c_MongoDBDeleteTests(unittest.TestCase):
             {"_id": 2, "name": "Bob"}
         ])
         
-        pImporter = c_DBManager(c_TextData("test.txt"))
+        pImporter = c_DBManager.f_get_instance(c_TextData("test.txt"))
         pImporter.result = acMockData  # type: ignore   # Used specifically for working around type restrictions for mock data
         
         pImporter.f_deleteData()
@@ -187,7 +187,7 @@ class c_MongoDBDeleteTests(unittest.TestCase):
         }[key]
         pMockInstance.close = MagicMock()
         
-        pImporter = c_DBManager(c_TextData("test.txt"))
+        pImporter = c_DBManager.f_get_instance(c_TextData("test.txt"))
         pImporter.f_deleteDataAll()
         
         # Verify delete_many was called with empty filter
@@ -212,7 +212,7 @@ class c_MongoDBDeleteTests(unittest.TestCase):
             object()  # Image-like object
         ])
         
-        pImporter = c_DBManager(c_TextData("test.txt"))
+        pImporter = c_DBManager.f_get_instance(c_TextData("test.txt"))
         pImporter.result = acMixedData  # type: ignore   # Used specifically for working around type restrictions for mock data
         
         pImporter.f_deleteData()
