@@ -1,12 +1,15 @@
-import tempfile
-import unittest
-from pathlib import Path
+# Author: Trinh Pham
 
-from WI7.Data import c_ImageData, c_TextData
+import tempfile             # Used for creating temporary files in tests
+import unittest             # Used for writing and running unit tests
+from pathlib import Path    # Used for handling file paths in tests
+
+from WI7.Data import c_ImageData, c_TextData    
 from WI7.Import import c_ImportData
 from WI7.main import f_dataObjectConvert
 
 # Will test each function to ensure correct behavior - unit tests
+
 
 
 # Unit tests for the Data classes
@@ -99,6 +102,7 @@ class c_ImportDataTests(unittest.TestCase):
         self.assertEqual(pImporter.f_get_data(), [])
 
 
+# Conversion tests for the data object conversion function
 class c_ConversionTests(unittest.TestCase):
     # verifies that the data object conversion selects the correct type based on file extension
     def test_data_object_convert_selects_type_from_extension(self):

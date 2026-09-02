@@ -25,6 +25,7 @@ Objectives:
 
 '''
 
+# Preprocessor directives
 from pathlib import Path
 
 try:
@@ -34,12 +35,17 @@ except ImportError:
     from Import import c_ImportData
     from Data import c_Data, c_ImageData, c_TextData
 
+
+# ------------------------------------------------------------------------------------------------------------
+
 test = True
 
 def main():
     result = f_dataConvert_Import("Data.txt")
 
     result = f_dataConvert_Import("MockPicture.png")
+
+# ------------------------------------------------------------------------------------------------------------
 
 
 def f_dataObjectConvert(fpFilePath: Path) -> c_Data: # returns a Data object based on the file type
@@ -56,11 +62,13 @@ def f_importData(pData: c_Data): # returns the imported Data object (not sure ye
     pImporter.f_import_toMongo()
     return pImporter.f_get_data()
 
-def f_dataConvert_Import(fpFileName: str): # dataObjectConvert() + importData()
-    fpFilePath = Path(__file__).with_name(fpFileName)
-    pDataObject = f_dataObjectConvert(fpFilePath)
+def f_dataConvert_Import(acFileName: str): # dataObjectConvert() + importData()
+    fpFilePath = Path(__file__).with_name(acFileName)
+    dataObject = f_dataObjectConvert(fpFilePath)
     if test:
-        print(f_importData(pDataObject))
+        print(f_importData(dataObject))
+
+# ------------------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
     main()
