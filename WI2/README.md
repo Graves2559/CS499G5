@@ -39,7 +39,7 @@ python3 -m venv .venv-rapidocr
 
 **Windows:**
 ```
-.venv-rapidocr\Scripts\python.exe -c "from huggingface_hub import snapshot_download; snapshot_download('microsoft/trocr-base-handwritten', local_dir='models/trocr-base-handwritten')"
+.venv\Scripts\python.exe -c "from huggingface_hub import snapshot_download; snapshot_download('microsoft/trocr-base-handwritten', local_dir='models/trocr-base-handwritten')"
 ```
 
 **Mac:**
