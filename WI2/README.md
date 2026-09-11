@@ -44,7 +44,7 @@ python3 -m venv .venv-rapidocr
 
 **Mac:**
 ```
-.venv-rapidocr/bin/python -c "from huggingface_hub import snapshot_download; snapshot_download('microsoft/trocr-base-handwritten', local_dir='models/trocr-base-handwritten')"
+.venv/bin/python -c "from huggingface_hub import snapshot_download; snapshot_download('microsoft/trocr-base-handwritten', local_dir='models/trocr-base-handwritten')"
 ```
 
 ## 4. Fix the GNHK dataset (run once)
