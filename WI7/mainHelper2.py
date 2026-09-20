@@ -305,7 +305,7 @@ class c_MainHelper2:
         acCorrespondedText = self.f_correspondExample(fpFilteredFile.read_text(encoding="utf-8"), acDialogueText)
 
         VOCAB_EXAMPLES_DIR.mkdir(parents=True, exist_ok=True)
-        fpCorrespondFile = VOCAB_EXAMPLES_DIR / f"{fpFilteredFile.stem}_correspond.txt"
+        fpCorrespondFile = VOCAB_EXAMPLES_DIR / f"{fpFilteredFile.stem}.md"
         fpCorrespondFile.write_text(acCorrespondedText, encoding="utf-8")
         return fpCorrespondFile
 

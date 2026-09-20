@@ -23,11 +23,14 @@ This file contains helper functions for the main executable script.
     3. f_deleteDataDB         Delete data from MongoDB based on the file type
     4. f_adjustName           Rename the local output file and its stored DB filename if already imported
     5. f_deleteAllDataDB     Delete all data from MongoDB (for testing purposes)
+    6. f_listData             List every stored file's filename, size, and date, sorted by filename/date/bytes
 
 
 '''
 
+from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 from OCR.OCR_manager import c_OCRFactory, c_OCRManager
 
@@ -162,3 +165,25 @@ class c_MainHelper:
             pImporter.f_show()
 
         return pImporter.f_get_data()   # Not really needed right now - but maybe for future.
+
+    # Output: returns a list of all data entries in the database and sorts it by either filename, date, or byte size.
+    # Each entry's bytes and date are pre-formatted for display: "megabytes" (e.g. "1.23 MB") and "date" (e.g. "2026/09/19").
+    # bDescending: most recent if True. Else, oldest first.
+    def f_listData(self, acSortBy: str = "date", bDescending: bool = True) -> list[dict[str, str]]:
+        if self.dbManager is None:
+            raise ValueError("A DB manager is required for database operations")
+
+        # field names: filename, date, or bytes
+        aFieldByName = {"filename": "filename", "date": "date_entered", "bytes": "bytes"}
+        if acSortBy not in aFieldByName:
+            raise ValueError(f"acSortBy must be one of {sorted(aFieldByName)}, got {acSortBy!r}")
+
+        aFiles = self.dbManager.f_list_files(aFieldByName[acSortBy], bDescending)
+        return [
+            {
+                "filename": cast(str, pFile["filename"]),
+                "megabytes": f"{cast(int, pFile['bytes']) / (1024 * 1024):.2f} MB", # explicit conversion
+                "date": cast(datetime, pFile["date_entered"]).strftime("%Y/%m/%d"), # explicit conversion
+            }
+            for pFile in aFiles
+        ]

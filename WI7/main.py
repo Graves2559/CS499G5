@@ -37,8 +37,6 @@ and pasting the exact file name, including any (1), (2), etc.
 
 '''
 
-
-
 try:
     from .DB.DBManager import c_DBManager
     from .mainHelper import c_MainHelper
@@ -125,6 +123,10 @@ def main():
 
     # RETRIEVE
     # helper.f_retrieveDataDB(fileName)
+
+    # helper.f_retrieveDataDB("E7C3E3.txt")
+    for pFile in helper.f_listData("date"):
+        print(f"{pFile['filename']:<40} {pFile['megabytes']:>12} {pFile['date']:>12}")
 
     # DELETE
     # helper.f_deleteDataDB("Data.txt")

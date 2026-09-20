@@ -23,6 +23,7 @@ import tempfile                 # for writing retrieved video bytes to a playabl
 import traceback                # To detail what line an error occurred on
 from io import BytesIO          # for decoding retrieved image bytes in-memory
 from pathlib import Path        # for handling file paths
+from typing import Any, cast    # for typing the sort key in f_list_files, whose comparable type varies by sort field
 from PIL import Image           # If not installed in the mongoenv, run: python -m pip install Pillow pymongo
 
 try:
@@ -186,6 +187,44 @@ class c_DBManager:
     def f_get_data(self) -> list[dict[str, object] | Image.Image | str]:          # Not really used right now - just used as a getter for the future
         # Simply returns the result list, which contains the data retrieved from the Data object
         return self.result
+
+    def f_list_files(self, acSortField: str = "date_entered", bDescending: bool = False) -> list[dict[str, object]]:
+        # Lists every stored file's filename, size in bytes, and date entered, merged from both the regular collection and GridFS.
+        try:
+            pClient = MongoClient(self.MONGODB_URI)
+            pDb = pClient[self.DB_NAME]
+            pCollection = pDb[self.COLLECTION_NAME]
+        except Exception as e:
+            iLineNumber = traceback.extract_stack()[-1].lineno
+            logger.exception(f"Failed to connect to MongoDB at line {iLineNumber}: {e}")
+            return []
+
+        aFiles: list[dict[str, object]] = []
+        try:
+            for pDocument in pCollection.find({}, {"filename": 1, "data": 1}):
+                aiData = pDocument.get("data")
+                iBytes = len(aiData) if isinstance(aiData, (bytes, bytearray, Binary)) else len(str(aiData).encode("utf-8"))
+                aFiles.append({
+                    "filename": pDocument.get("filename"),
+                    "bytes": iBytes,
+                    "date_entered": pDocument["_id"].generation_time,   # regular docs have no uploadDate, so derive it from the ObjectId itself
+                })
+
+            for pGridFile in pDb["fs.files"].find({}, {"filename": 1, "length": 1, "uploadDate": 1}):   # GridFS already tracks length/uploadDate natively
+                aFiles.append({
+                    "filename": pGridFile.get("filename"),
+                    "bytes": pGridFile.get("length"),
+                    "date_entered": pGridFile.get("uploadDate"),
+                })
+        except Exception as e:
+            iLineNumber = traceback.extract_stack()[-1].lineno
+            logger.exception(f"Failed to list files from MongoDB at line {iLineNumber}: {e}")
+            return []
+        finally:
+            pClient.close()
+
+        aFiles.sort(key=lambda pFile: cast(Any, pFile.get(acSortField) or 0), reverse=bDescending)
+        return aFiles
 
     def f_retrieveFromMongo(self) -> None:      # Retrieves data straight from MongoDB (not the local file) and populates the result list
         if not isinstance(self.data, Data.c_Data):            # inverse guard clause
