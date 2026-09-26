@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Highlight-to-Define demo</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 700px;
+    margin: 60px auto;
+    line-height: 1.6;
+    color: #222;
+  }
+  h1 {
+    font-size: 1.1rem;
+    color: #555;
+    font-weight: 600;
+  }
+  #note {
+    font-size: 1.15rem;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+    user-select: text;
+  }
+  #define-btn {
+    position: absolute;
+    display: none;
+    padding: 6px 12px;
+    background: #222;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    z-index: 10;
+  }
+  #define-btn:hover {
+    background: #444;
+  }
+  #result {
+    margin-top: 24px;
+    padding: 16px;
+    border-radius: 8px;
+    background: #eef6ff;
+    border: 1px solid #cfe3fb;
+    display: none;
+    white-space: pre-wrap;
+  }
+  #result.error {
+    background: #fdeeee;
+    border-color: #f3c6c6;
+  }
+  #status {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #888;
+  }
+</style>
+</head>
+<body>
+
+<h1>Highlight some text below, then click "Define"</h1>
+
+<p id="note">
+  Cellular respiration is the process by which cells break down glucose to
+  release energy stored in its chemical bonds, occurring in three main
+  stages: glycolysis, the citric acid cycle, and oxidative phosphorylation.
+</p>
+
+<button id="define-btn">Define</button>
+<div id="result"></div>
+<div id="status"></div>
+
+<script>
+  // Backend URL -- change this if your FastAPI server runs somewhere else.
+  const API_URL = "http://localhost:8000/api/define";
+
+  const note = document.getElementById("note");
+  const defineBtn = document.getElementById("define-btn");
+  const resultBox = document.getElementById("result");
+  const statusBox = document.getElementById("status");
+
+  let lastSelectedText = "";
+
+  // Step 1: detect a text selection inside #note and show a floating
+  // "Define" button near it. This is the whole "highlight text" mechanic --
+  // no external library, just the browser's built-in Selection API.
+  document.addEventListener("mouseup", () => {
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
+
+    // Only react to selections that are actually inside our note text --
+    // ignore highlighting the button, the result box, etc.
+    const isInsideNote =
+      selection.anchorNode && note.contains(selection.anchorNode);
+
+    if (!text || !isInsideNote) {
+      defineBtn.style.display = "none";
+      return;
+    }
+
+    lastSelectedText = text;
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    defineBtn.style.left = `${window.scrollX + rect.left}px`;
+    defineBtn.style.top = `${window.scrollY + rect.bottom + 6}px`;
+    defineBtn.style.display = "block";
+  });
+
+  // Step 2: on click, send the highlighted text to the backend.
+  defineBtn.addEventListener("click", async () => {
+    if (!lastSelectedText) return;
+
+    defineBtn.style.display = "none";
+    resultBox.style.display = "none";
+    resultBox.classList.remove("error");
+    statusBox.textContent = "Asking the model...";
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: lastSelectedText }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || `Request failed (${response.status})`);
+      }
+
+      resultBox.textContent = `"${lastSelectedText}" -> ${data.definition}`;
+      resultBox.style.display = "block";
+      statusBox.textContent = `model: ${data.model}`;
+    } catch (err) {
+      resultBox.textContent = `Error: ${err.message}`;
+      resultBox.classList.add("error");
+      resultBox.style.display = "block";
+      statusBox.textContent =
+        "(Is the backend running? Check http://localhost:8000/health)";
+    }
+  });
+</script>
+
+</body>
+</html>

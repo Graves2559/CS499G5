@@ -1,6 +1,6 @@
 """
 Minimal proof-of-concept: send text to one or more local Ollama models and
-print back a summary + how long each took. Not the real pipeline -- just
+print back a summary. Not the real pipeline -- just
 enough to prove the Ollama -> Python integration works before building
 the actual scaffolding (routing, error handling, etc.) around it.
 
@@ -14,25 +14,23 @@ Usage:
     python summarize_poc.py --models llama3.1:8b --text "some raw text here"
 """
 import argparse
-import time
+from email.mime import text
+import random
 from pathlib import Path
 
 import ollama
 
 PROMPT_TEMPLATE = (
-    "Summarize the following text in 2-3 sentences, capturing the main points. "
-    "Do not add information that isn't in the text.\n\n{text}"
+    "You will either be given a word to define, or a short paragraph to summarize. If it is a word, provide a concise definition. If it is a paragraph, provide a brief summary."
+    "Words: {text}"
 )
 
-
-def summarize(model: str, text: str) -> tuple[str, float]:
-    start = time.perf_counter()
+def summarize(model: str, text: str) -> str:
     response = ollama.chat(
         model=model,
         messages=[{"role": "user", "content": PROMPT_TEMPLATE.format(text=text)}],
     )
-    elapsed = time.perf_counter() - start
-    return response["message"]["content"], elapsed
+    return response["message"]["content"]
 
 
 def main():
@@ -52,16 +50,34 @@ def main():
     else:
         parser.error("Provide either --text-file or --text")
 
-    for model in args.models:
-        print(f"\n=== {model} ===")
-        try:
-            summary, elapsed = summarize(model, text)
-        except Exception as exc:
-            print(f"FAILED: {exc}")
-            print("(Is Ollama running? Is this model pulled? `ollama list` to check.)")
-            continue
-        print(f"time: {elapsed:.2f}s")
-        print(f"summary: {summary}")
+    lines = [
+        (line_number, line)
+        for line_number, line in enumerate(text.splitlines(), start=1)
+        if line.strip()
+    ]
+    if len(lines) < 5:
+        parser.error("The supplied text must contain at least five non-empty lines")
+
+    required_lines = [entry for entry in lines if 20 <= entry[0] <= 23]
+    if not required_lines:
+        parser.error("The supplied text must contain a line between 20 and 23")
+
+    selected_lines = [random.choice(required_lines)]
+    remaining_lines = [entry for entry in lines if entry not in selected_lines]
+    selected_lines.extend(random.sample(remaining_lines, 4))
+    random.shuffle(selected_lines)
+
+    for line_number, line in selected_lines:
+        print(f"\n=== line {line_number}/{len(lines)} ===")
+        for model in args.models:
+            print(f"\n--- model {model} ---")
+            try:
+                summary = summarize(model, line)
+            except Exception as exc:
+                print(f"FAILED: {exc}")
+                print("(Is Ollama running? Is this model pulled? `ollama list` to check.)")
+                continue
+            print(f"summary: {summary}")
 
 
 if __name__ == "__main__":
