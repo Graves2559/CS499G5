@@ -84,66 +84,42 @@
 
   let lastSelectedText = "";
 
-  // Step 1: detect a text selection inside #note and show a floating
-  // "Define" button near it. This is the whole "highlight text" mechanic --
-  // no external library, just the browser's built-in Selection API.
-  document.addEventListener("mouseup", () => {
-    const selection = window.getSelection();
-    const text = selection.toString().trim();
+  // GOAL (step 1): detect when the user highlights text inside #note, and
+  // show the floating "Define" button right next to what they selected.
+  // No library needed -- this is entirely the browser's built-in Selection
+  // API.
+  //
+  // TODO: add a "mouseup" listener on `document`. Inside it:
+  //   - get the current selection object: window.getSelection()
+  //   - get the selected text as a string, trimmed: selection.toString().trim()
+  //   - make sure the selection is actually inside `note`, not somewhere
+  //     else on the page (check selection.anchorNode and note.contains(...))
+  //   - if there's no text, or it's not inside `note`: hide defineBtn
+  //     (defineBtn.style.display = "none") and stop
+  //   - otherwise: save the text into `lastSelectedText`, figure out where
+  //     on screen the selection is (selection.getRangeAt(0).getBoundingClientRect()),
+  //     position defineBtn there via its .style.left / .style.top, and show
+  //     it (defineBtn.style.display = "block")
 
-    // Only react to selections that are actually inside our note text --
-    // ignore highlighting the button, the result box, etc.
-    const isInsideNote =
-      selection.anchorNode && note.contains(selection.anchorNode);
 
-    if (!text || !isInsideNote) {
-      defineBtn.style.display = "none";
-      return;
-    }
-
-    lastSelectedText = text;
-
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-
-    defineBtn.style.left = `${window.scrollX + rect.left}px`;
-    defineBtn.style.top = `${window.scrollY + rect.bottom + 6}px`;
-    defineBtn.style.display = "block";
-  });
-
-  // Step 2: on click, send the highlighted text to the backend.
-  defineBtn.addEventListener("click", async () => {
-    if (!lastSelectedText) return;
-
-    defineBtn.style.display = "none";
-    resultBox.style.display = "none";
-    resultBox.classList.remove("error");
-    statusBox.textContent = "Asking the model...";
-
-    try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: lastSelectedText }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || `Request failed (${response.status})`);
-      }
-
-      resultBox.textContent = `"${lastSelectedText}" -> ${data.definition}`;
-      resultBox.style.display = "block";
-      statusBox.textContent = `model: ${data.model}`;
-    } catch (err) {
-      resultBox.textContent = `Error: ${err.message}`;
-      resultBox.classList.add("error");
-      resultBox.style.display = "block";
-      statusBox.textContent =
-        "(Is the backend running? Check http://localhost:8000/health)";
-    }
-  });
+  // GOAL (step 2): when the button is clicked, send lastSelectedText to the
+  // backend and show what comes back.
+  //
+  // TODO: add a "click" listener on defineBtn. Inside it:
+  //   - bail out early if lastSelectedText is empty
+  //   - hide defineBtn, hide/reset resultBox, set statusBox to something
+  //     like "Asking the model..." so there's feedback while it's loading
+  //   - fetch(API_URL, { method: "POST", headers: {"Content-Type":
+  //     "application/json"}, body: JSON.stringify({ text: lastSelectedText }) })
+  //   - await response.json() to get the parsed body
+  //   - if response.ok is false, throw an Error using the "detail" field
+  //     from the backend's error response (that's what FastAPI's
+  //     HTTPException sends back)
+  //   - otherwise, show data.definition in resultBox and data.model in
+  //     statusBox
+  //   - wrap the fetch + handling in try/catch so a backend/Ollama failure
+  //     shows up as a message in resultBox instead of failing silently --
+  //     check the browser console if something isn't working
 </script>
 
 </body>

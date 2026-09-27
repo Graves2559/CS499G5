@@ -56,6 +56,7 @@ def run_logged(name, operation, image_path, writer):
     row = {
         "test": name,
         "image": str(image_path),
+        "image_size": f"{image_path.stat().st_size / 1024 / 1024:.1f} MB",
         "seconds": f"{elapsed:.3f}",
         "cpu_percent": f"{process.cpu_percent():.1f}",
         "ram_mb": f"{process.memory_info().rss / 1024 / 1024:.1f}",
@@ -77,7 +78,7 @@ def iter_images(images_dir, limit):
 
 def _bench(name, operation, images_dir, limit, log_path):
     images = iter_images(images_dir, limit)
-    fields = ["test", "image", "seconds", "cpu_percent", "ram_mb", "gpu_percent", "gpu_memory_mb", "result"]
+    fields = ["test", "image", "image_size", "seconds", "cpu_percent", "ram_mb", "gpu_percent", "gpu_memory_mb", "result"]
     rows = []
     write_header = not log_path.exists()
     with log_path.open("a", newline="", encoding="utf-8") as log_file:
@@ -88,6 +89,7 @@ def _bench(name, operation, images_dir, limit, log_path):
         for i, image_path in enumerate(images, 1):
             try:
                 row = run_logged(name, operation, image_path, writer)
+                row["image_size"] = f"{image_path.stat().st_size / 1024 / 1024:.1f} MB"
             except Exception as exc:
                 skipped += 1
                 print(f"[{i}/{len(images)}] {name}: SKIPPED ({image_path}) -- {exc}")

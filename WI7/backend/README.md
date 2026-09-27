@@ -2,6 +2,12 @@
 
 Terminal commands only, run from inside this `backend/` folder.
 
+**Note:** `main.py`, `llm.py`, and `routers/define.py` are skeletons, not
+finished code -- each has a docstring explaining the goal and `TODO`
+comments with hints (function names to look up, what each piece needs to
+do) instead of a working implementation. Fill those in yourself; the run
+steps below assume you've done that.
+
 ## 1. Create a venv and install dependencies
 
 **Windows:**

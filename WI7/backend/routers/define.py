@@ -1,15 +1,25 @@
 """
 The "AI defines it" work item: accepts some highlighted text and returns a
-short definition. This is the template for future feature routers -- copy
-this file's shape (prompt template + request/response models + one route
-function) for summarize.py, etc.
+short definition. This is the template for future feature routers -- once
+this one works end to end, copy its shape for summarize.py etc.
+
+Goal for this file:
+    - A request model: {"text": "...", "model": optional override}
+    - A response model: {"definition": "...", "model": "..."}
+    - A POST /define route that:
+        1. Strips the incoming text; rejects it with a 400 if it's empty
+        2. Falls back to DEFAULT_MODEL if no model override was given
+        3. Builds a prompt from DEFINE_PROMPT_TEMPLATE + the text
+        4. Calls llm.run_prompt(...) inside a try/except
+        5. Returns the definition, or a 502 if the call to Ollama itself
+           failed (not running, model not pulled, etc.)
 """
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
-from llm import run_prompt, DEFAULT_MODEL
+# TODO: from fastapi import APIRouter, HTTPException
+# TODO: from pydantic import BaseModel
+# TODO: from llm import run_prompt, DEFAULT_MODEL
 
-router = APIRouter()
+# TODO: router = APIRouter()
 
 DEFINE_PROMPT_TEMPLATE = (
     "Define the following term or phrase clearly and concisely, in 1-2 "
@@ -18,32 +28,20 @@ DEFINE_PROMPT_TEMPLATE = (
 )
 
 
-class DefineRequest(BaseModel):
-    text: str
-    model: str | None = None  # optional override, defaults to DEFAULT_MODEL
+# TODO: class DefineRequest(BaseModel):
+#     text: str
+#     model: str | None = None
 
 
-class DefineResponse(BaseModel):
-    definition: str
-    model: str
+# TODO: class DefineResponse(BaseModel):
+#     definition: str
+#     model: str
 
 
-@router.post("/define", response_model=DefineResponse)
-def define(payload: DefineRequest):
-    text = payload.text.strip()
-    if not text:
-        raise HTTPException(status_code=400, detail="text must not be empty")
-
-    model = payload.model or DEFAULT_MODEL
-    try:
-        definition = run_prompt(DEFINE_PROMPT_TEMPLATE.format(text=text), model=model)
-    except Exception as exc:
-        # Covers "Ollama isn't running" and "model isn't pulled" -- both show
-        # up as generic exceptions from the ollama client, not a clean HTTP
-        # error, so translate it into one here.
-        raise HTTPException(
-            status_code=502,
-            detail=f"Could not reach model '{model}' via Ollama: {exc}",
-        )
-
-    return DefineResponse(definition=definition, model=model)
+# TODO: @router.post("/define", response_model=DefineResponse)
+# def define(payload: DefineRequest):
+#     - text = payload.text.strip(); raise HTTPException(400, ...) if empty
+#     - model = payload.model or DEFAULT_MODEL
+#     - try: definition = run_prompt(DEFINE_PROMPT_TEMPLATE.format(text=text), model=model)
+#       except Exception as exc: raise HTTPException(502, detail=f"...: {exc}")
+#     - return DefineResponse(definition=definition, model=model)
