@@ -7,6 +7,10 @@ __pycache__/
 *.mp4
 *.MP4
 
+# Local HTTPS dev certs (mkcert)
+certs/
+*.pem
+
 # C extensions
 *.so
 

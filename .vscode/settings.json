@@ -9,5 +9,9 @@
         "test*.py"
     ],
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "code-runner.executorMap": {
+        "python": "$workspaceRoot/.venv/bin/python -u $fullFileName"
+    },
+    "code-runner.respectShebang": false
 }

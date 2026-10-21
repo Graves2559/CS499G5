@@ -125,7 +125,7 @@ def main():
     # helper.f_retrieveDataDB(fileName)
 
     # helper.f_retrieveDataDB("E7C3E3.txt")
-    for pFile in helper.f_listData("date"):
+    for pFile in helper.f_listData("bytes"):
         print(f"{pFile['filename']:<40} {pFile['megabytes']:>12} {pFile['date']:>12}")
 
     # DELETE
