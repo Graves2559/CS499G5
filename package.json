@@ -1,5 +1,5 @@
-{
-  "name": "closedai-prototype",
+﻿{
+  "name": "closedai",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -25,3 +25,4 @@
     "rolldown": "1.0.1"
   }
 }
+

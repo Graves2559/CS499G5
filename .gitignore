@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Website dependencies and temporary build files
+/node_modules/
+/work/
+/.venv-rapidocr/
