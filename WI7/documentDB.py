@@ -81,7 +81,7 @@ class DocumentDB(Database):
             pClient.close()
             if (config.TEST_MODE): print("\nConnection closed.")
 
-    # Because e2e will add, delete, edit, etc. iteratively, we need a way to persist the connection across multiple operations.
+    # Because DBmanager will add, delete, edit, etc. iteratively, we need a way to persist the connection across multiple operations.
     def persistConnection(self, operation, items, action):
         results = []
         failures = 0
