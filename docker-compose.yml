@@ -1,0 +1,7 @@
+# Note: ./WI29_Server is the current folder. When integrating it, it will most likely be another folder's name.
+
+services:
+  wi29-server:
+    build: ./WI29_Server
+    ports:
+      - "8000:8000"

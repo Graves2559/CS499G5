@@ -2,6 +2,10 @@
 
 A small FastAPI backend served over ASGI by uvicorn.
 
+FOR TESTING PURPOSES
+
+For official purposes, use the README.md of the root folder. 
+
 ## Requirements
 
 - Python 3.9+
@@ -96,17 +100,13 @@ winget install --id Cloudflare.cloudflared
 
 ### Usage
 
-With the server already running (`python main.py`), open a separate terminal and start a quick tunnel — no account or login required:
-
+To easily verify that cloudflare does run, run the **program** [Running the Program](#running-the-program) 
+While it is running, open a separate terminal and start a quick tunnel, via:
 ```bash
 cloudflared tunnel --url http://localhost:8000
 ```
 
-`cloudflared` will print a public forwarding URL, e.g.:
-
-```
-https://random-words-here.trycloudflare.com
-```
+`cloudflared` will print a public forwarding URL, **e.g.**: https://random-words-here.trycloudflare.com
 
 That URL is publicly reachable over HTTPS and forwards traffic to this server on port 8000, with no warning page shown to visitors.
 

@@ -8,7 +8,7 @@ This file will use an ASGI server (uvicorn in this case) to serve the FastAPI ap
 
 import uvicorn
 from httpAPI import HttpAPI
-from pyngrok import ngrok
+# from pyngrok import ngrok
 
 import socket
 import subprocess, signal, os, time
