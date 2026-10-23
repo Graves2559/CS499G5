@@ -1,2 +1,0 @@
-
-This will the processed text from the OCR and processing. 

@@ -1,155 +1,165 @@
 
-
 '''
 main.py
 
-Author: Trinh Pham
+TESTING MODE
+During testing, the program will directly answer **FROM** the command execution of the program and the respective 
+arguments within the command line/terminal.
 
-This is the executable script for the project.
-This will instantiate the main classes of the project and inject the necessary dependencies.
+# Turning on/off
+To turn on test mode, simply reassign the parameter "TEST_MODE" within the "config.py" as True
+When finished with testing, ensure that the parameter "TEST_MODE" is reassigned back to as False
 
+# Purpose of testing mode
+It will act as a simulator for the official mode. That is, the program  will provide the requests and such, as if
+the request was sent by some client. To be clearer, the events will **NOT** be dependent on some real-world request.
 
-'''
-
-'''
-Context: 
-1. MongoDB is a NoSQL database that stores data in JSON, BSON, and XML documents.
-2. NoSQL databases allow for horizontal scaling, such that there can be many servers instead of just one for storing data.
-'''
-
-'''
-Objectives:
-1. To import data into a MongoDB
-    -> Requires a running MongoDB instance and code to connect to it.
-2. Have mock data to import into the MongoDB database.
-
-Operations:
-1. Convert a file into a Data object based on its type.
-2. Import the Data object into MongoDB.
-3. Delete data from MongoDB.
-4. Retrieve data from MongoDB.
-5. Optionally delete all data from MongoDB (for testing purposes).
-
-NOTE: FOR THE UI INTEGRATION, THE DATABASE SHOULD BE DISPLAYED. 
-- This means that files that are duplicates and are appended with (1), (2), etc. to preserve canonical form will have to have a 
-delete button to delete said file. Additionally, there can be some textbox that allows the user to delete said file by copying 
-and pasting the exact file name, including any (1), (2), etc.
-
-'''
-
-try:
-    from .DB.DBManager import c_DBManager
-    from .mainHelper import c_MainHelper
-    from .OCR.OCR import c_OCR, c_GoogleCloudOCR, c_TesseractOCR
-    from .OCR.OCR_manager import c_OCRManager
-except ImportError:
-    from DB.DBManager import c_DBManager
-    from mainHelper import c_MainHelper
-    from OCR.OCR import c_OCR, c_GoogleCloudOCR, c_TesseractOCR
-    from OCR.OCR_manager import c_OCRManager
-
-
-# Note: Testing mode (True) is for testing the import function works correctly by showing the imported data
-
-# ------------------------------------------------------------------------------------------------------------
+For testing mode, these are the symbols to represent the operations:
+    Primitives:
+        --a : Add 
+            f_dataConvert_Import (requires input file)
+            f_assignOCR (requires OCR) [Must have --ocr as part of args]
+        --d : Delete
+            f_deleteDataDB (requires input file)
+            f_deleteAllDataDB (requires input file)
+        --e : Edit/rename
+            f_adjustName (requires input file and output file)
     
+    Files:
+        --r : retrieve
+            f_retrieveDataDB (requires input file)
+
+    OCR:
+        --u : Upload file
+            f_uploadFileOCR (requires input file)
+
+        --ocr : ocr specification ( **NOT** adding - it is an extension to specify that the program uses the OCR version)
+    
+    LLM:
+        --o : Organize text
+            f_organizeTextLLM (requires input file)
+
+        --llm : LLM specification ( **NOT** adding - it is an extension to specify that the program uses the LLM version)
+
+    Files and OCR:
+        --l : list
+            f_listData
+            f_listOCR [Must have --ocr as part of args]
+
+    Accompany ( **WITH** a file):
+        --i = input file
+        --o = output file
+
+OFFICIAL MODE
+During official mode, these should have happened:
+1. The parameter "TEST_MODE" within the "config.py" is set to False
+2. Per action (add, edit, delete, get, etc.), the backend server (this program) should state WITHIN itself that 
+    the connection is successful.
+    This means that the frontend should not display (per request) that the connection is successful to the user at all.
+    It should instead state (step 3)
+3. Per action (add, edit, delete, get, etc.), the backend server, once finished with its action,
+    should provide a response to the frontend that the action/request is successful.
+4. The program should not be interactive. It should receive some request, parse it, and then send the output
+    and a successful response.
+
+# Turning on/off
+1. Initially, it will be executed via the terminal/command line, hearing for some request and such
+2. Afterwards, it should be integrated into Docker, so that you only need to click a button on Docker to run it,
+    instead of interacting with the terminal/command line.
+
+
+# OPERATIONS
+This program shall:
+
+(A) Primitives:
+1. Connect to the database
+2. Add file(s) to the database
+3. Change file(s) within the database
+4. Delete file(s)within the database
+
+(B) Extensions:
+1. Make the files unique within the database, such that if the to-be-added file2 is the same identifer (name)
+     as file 1 (within DB), then file2 will be marked with (k:1 to n). 
+2. Connect to the login account. That is, have a password database (hashed)
+3. Connect to the client and server program. That is, have a backend router (REST/HTTP API). Currently,
+    we are using React as the frontend. Hence, we will use **FastAPI**, since it is dedicated for React. 
+4. Connect to the WAN and LAN, with TLS encryption under HTTP (HTTPS). 
+
+
+# IMPLEMENTATION
+This program will use a facade pattern. That is, it will have a class that does some end-to-end operation/method 
+from start to finish, using other objects (class instantiations) and input data to output something, according
+to said end-to-end operation. The facade class will called "e2e.py".
+
+This program will use the singleton pattern on the facade pattern, to enforce that there can be
+no other root facades. 
+
+We will have Manager classes to store the (if any) input files and (if any) intermediate output files.
+Current Manager classes:
+1. dBM DBManager       # This manager additionally acts as an Adapter (external-service-facing component) to the DB
+
+We will have Resource classes to store the respective value(s) independently. These resource classes will
+act as a container so that the Manager classes can act on them.
+1. Data
+
+'''
+
+import argparse
+import config 
+from DBManager import DBManager
+from e2e import E2e
+
+
 def main():
+    if (config.TEST_MODE): 
+        print(f"\nParsing command-line arguments...\n")
+        args = parseArgs()
 
-    oCRM = c_OCRManager.f_get_instance()
-    dBM = c_DBManager.f_get_instance()
-
-    # Facade pattern
-    helper = c_MainHelper(dBM, oCRM, test=False, deleteAll=False)
-
-    # Operations of Facade pattern:
-    '''
-        OCR
-        1. f_assignOCR            Assign the OCR engine to use
-        2. f_processFileOCR       Process the source file using the assigned OCR engine
-        3. f_createFile           Create a text file with the organized text
-        4. f_uploadFileOCR        Upload the file to the OCR engine's storage (if applicable) and return the remote path or URL
-        5. f_organizeTextOCR      Organize the already-detected text
-        6. f_uploadFileOCR        Upload the file to the OCR engine's storage (if applicable) and return the remote path or URL
-        7. f_organizeTextOCR      Organize the already-detected text
-
-        Database
-        1. f_dataConvert_Import   Convert the text file into a Data object and import it into MongoDB
-        2. f_retrieveDataDB       Retrieve data from MongoDB based on the file type
-        3. f_deleteDataDB         Delete data from MongoDB based on the file type
-        4. f_adjustName           Rename the local output file and its stored DB filename if already imported
-        5. f_deleteAllDataDB     Delete all data from MongoDB (for testing purposes)
-    '''
-
-    # Assign the OCR engine to use before processing any files
-    helper.f_assignOCR("GoogleCloud")  # Assign the OCR engine to Google Cloud
-
-    # Prepare the list of source files and their corresponding output files
-    # ==========================================================================================================
-    sourceName = []
-    fileName = []
-    
-    """ sourceName.append("魔王様は回復魔術を極めたいC3.MP4")
-    fileName.append("魔王様は回復魔術を極めたいC3.txt") """
-
-    # Match each source file to its corresponding output file by the same index.
-    # Example: sourceName[0] -> fileName[0], sourceName[1] -> fileName[1]
-    pairedFiles = {}
-    for i in range(len(sourceName)):
-        pairedFiles[sourceName[i]] = fileName[i]
-
-    # helper.f_uploadFileOCR("E7C3E4.MP4")  # Process the file using the assigned OCR engine
-
-    for source_file, output_file in pairedFiles.items():
-        if not source_file:
-            return
-        
-        print(f"Processing source file: {source_file} with output file: {output_file}")
-        rawText = helper.f_processFileOCR(source_file)  # Detect on-screen text in the video and print it
-        rawText = helper.f_organizeTextOCR(rawText)
-        # NOTE: dialogue word-splitting is intentionally not done here; main2.py's vocab pipeline
-        # re-splits this output file itself and expects it to still have intact DIALOGUE sentences.
-
-        helper.f_createFile(output_file, rawText)  # Create a text file with the organized text
-        helper.f_dataConvert_Import(output_file)
-    # ==========================================================================================================
+    # DBManager(input file, output file)
+    dBM = DBManager()
+    e2e = E2e(dBM, args)
 
 
-    # TEXT ========================
+    pass
 
-    # CREATE
-    # helper.f_createFile(output_file, rawText)  # Create a text file with the organized text
-    # helper.f_dataConvert_Import(output_file)
+def parseArgs():
+    parser = argparse.ArgumentParser(
+        description="Display statistics for a branch in a git repository."
+    )
 
+    parser.add_argument("--i", nargs = "+") # input file : ≥1 files; if =1, then '?'
+    parser.add_argument("--o", nargs = "+") # output file : ≥1 files; if =1, then '?'
 
-    # RETRIEVE
-    # helper.f_retrieveDataDB(fileName)
+    parser.add_argument(    # OCR is a version of operation that can be toggled on or off
+        "--ocr",
+        help="Specification of the OCR operation to perform",
+        action="store_true"
+    )
+    parser.add_argument(    # llm is a version of operation that can be toggled on or off
+        "--llm",
+        help="Specification of the LLM operation to perform",
+        action="store_true"
+    )
+    parser.add_argument(    # psw is a version of operation that can be toggled on or off. If off, then file.
+                            # That is, file is the default storage if password operation is not used.
+        "--psw",
+        help="Specification of the password operation to perform",
+        action="store_true"
+    )
+    group = parser.add_mutually_exclusive_group()   # Either e, d, a, l, r, c, or u
+    group.add_argument( "--e",help="Specification of the edit/rename operation to perform", action="store_true")
+    group.add_argument("--d", help="Specification of the delete operation to perform", action="store_true")
+    group.add_argument("--a", help="Specification of the operation to perform: add (--a), delete (--d), or edit/rename (--e)", action="store_true")
+    group.add_argument("--l", help="Specification of the list operation to perform", action="store_true")
+    group.add_argument("--r", help="Specification of the retrieve operation to perform", action="store_true")
+    group.add_argument("--c", help="Specification of the create operation to perform", action="store_true")
+    group.add_argument("--u", help="Specification of the upload operation to perform", action="store_true")
 
-    # helper.f_retrieveDataDB("E7C3E3.txt")
-    for pFile in helper.f_listData("bytes"):
-        print(f"{pFile['filename']:<40} {pFile['megabytes']:>12} {pFile['date']:>12}")
-
-    # DELETE
-    # helper.f_deleteDataDB("Data.txt")
-
-    """  helper.f_adjustName("Game1.txt", "E7C3E1.txt")
-    helper.f_adjustName("Game2.txt", "E7C3E2.txt")
-    helper.f_adjustName("Game3.txt", "E7C3E3.txt") """
-
-    # IMAGE ========================
-    # helper.f_dataConvert_Import("MockPicture.png")
-    # helper.f_retrieveDataDB("MockPicture.png")
-    # helper.f_deleteDataDB("MockPicture.png")
-
-    # VIDEO ========================
-    # helper.f_dataConvert_Import("MockVideo.mov")
-    # helper.f_retrieveDataDB("MockVideo.mov")
-    # helper.f_deleteDataDB("MockVideo.mov")
-
-# ------------------------------------------------------------------------------------------------------------
+    args = parser.parse_args()  # Different from ParseArgs() function name
+    return args
 
 
 
-# ------------------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
     main()
