@@ -2,6 +2,8 @@
 
 services:
   wi29-server:
-    build: ./WI29_Server
+    build: 
+      context: .
+      dockerfile: WI29_Server/Dockerfile
     ports:
       - "8000:8000"
