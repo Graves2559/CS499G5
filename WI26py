@@ -1,0 +1,51 @@
+
+class Account:
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
+
+class User(Account):
+    pass
+
+class Admin(Account):
+    def delete_user(self, username, checkUser):
+
+        if username in checkUser.accounts and isinstance(checkUser.accounts[username], User):
+            del checkUser.accounts[username]
+            print("Deleted User: ", username)
+        else:
+            print("Could not delete user: ", username)
+
+    def testfeature(self):
+        print("Test ran successfully.")
+class CredentialCheck:
+
+    def __init__(self):
+        self.accounts = {}
+
+    def addAccount(self, account):
+        self.accounts[account.username] = account
+
+    def check(self , username, password):
+        if username in self.accounts and self.accounts[username].password == password:
+            return True
+        return False
+    
+""""Testong"""
+checker = CredentialCheck()
+checker.addAccount(Admin("admin1", "adminpass"))
+checker.addAccount(User("alice", "alicepw"))
+checker.addAccount(User("bob", "bobpw"))
+ 
+if checker.check("admin1", "adminpass"):
+    print("Admin logged in")
+    admin = checker.accounts["admin1"]
+    admin.testfeature()
+    admin.delete_user("bob", checker)
+else:
+    print("Wrong username or password")
+ 
+print(checker.check("bob", "bobpw"))  # False, bob was deleted
+
+        
+        
