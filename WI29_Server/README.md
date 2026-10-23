@@ -114,32 +114,6 @@ That URL is publicly reachable over HTTPS and forwards traffic to this server on
 
 
 ## Running the Program
-
-> `pyngrok` auto-downloads the `ngrok` binary the first time it runs, and may fail with a `CERTIFICATE_VERIFY_FAILED` error if Python's trusted certificates aren't set up correctly for your OS. If you hit that error, fix it for your OS first:
-
-**macOS** — the python.org installer builds ship their own OpenSSL and don't trust the system CA store by default:
-```bash
-bash "/Applications/Python 3.11/Install Certificates.command"
-```
-> Adjust the version number in the path (e.g. `Python 3.12`) to match the Python version you installed.
-
-**Windows** — usually only needed if you're behind a corporate proxy/antivirus doing TLS inspection:
-```powershell
-python -m pip install --upgrade certifi
-```
-> If that alone doesn't fix it, install `pip-system-certs` so Python trusts the Windows certificate store directly:
-> ```powershell
-> python -m pip install pip-system-certs
-> ```
-
-**Linux** — make sure the system CA bundle is installed and up to date:
-```bash
-sudo apt update && sudo apt install --reinstall ca-certificates   # Debian/Ubuntu
-# or: sudo dnf reinstall ca-certificates                          # Fedora/RHEL
-python3 -m pip install --upgrade certifi
-```
-
-
 With the virtual environment activated:
 
 ```bash
@@ -158,7 +132,6 @@ This starts uvicorn, binding to `0.0.0.0:8000` so the server is reachable over t
 
 Ensure that you add into your virtual environment this: python3 -m pip install pyngrok
 
-### Installation
 This server listens on plain HTTP (`0.0.0.0:8000`); [ngrok](https://ngrok.com) creates a public HTTPS tunnel to it so it's reachable from outside the local machine/network.
 
 ### Installation
@@ -200,3 +173,30 @@ choco install ngrok
 ```
 
 > Alternatively, download the `.zip` from the [ngrok downloads page](https://ngrok.com/download) and extract `ngrok.exe` somewhere on your `PATH`.
+
+
+### Pyngrok Installation 
+> `pyngrok` auto-downloads the `ngrok` binary the first time it runs, and may fail with a `CERTIFICATE_VERIFY_FAILED` error if Python's trusted certificates aren't set up correctly for your OS. If you hit that error, fix it for your OS first:
+
+**macOS** — the python.org installer builds ship their own OpenSSL and don't trust the system CA store by default:
+```bash
+bash "/Applications/Python 3.11/Install Certificates.command"
+```
+> Adjust the version number in the path (e.g. `Python 3.12`) to match the Python version you installed.
+
+**Windows** — usually only needed if you're behind a corporate proxy/antivirus doing TLS inspection:
+```powershell
+python -m pip install --upgrade certifi
+```
+> If that alone doesn't fix it, install `pip-system-certs` so Python trusts the Windows certificate store directly:
+> ```powershell
+> python -m pip install pip-system-certs
+> ```
+
+**Linux** — make sure the system CA bundle is installed and up to date:
+```bash
+sudo apt update && sudo apt install --reinstall ca-certificates   # Debian/Ubuntu
+# or: sudo dnf reinstall ca-certificates                          # Fedora/RHEL
+python3 -m pip install --upgrade certifi
+```
+
