@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "closedai",
   "version": "1.0.0",
   "private": true,
@@ -7,9 +7,10 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "start msedge http://127.0.0.1:5173 && node scripts/preview-static.mjs",
-    "build": "node scripts/build-static.mjs",
-    "start": "node scripts/preview-static.mjs",
+    "predev": "kill-port 5173",
+    "dev": "vite",
+    "build": "vite build",
+    "start": "vite preview",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -21,8 +22,9 @@
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "kill-port": "^2.0.1",
     "typescript": "5.9.3",
-    "rolldown": "1.0.1"
+    "vite": "^6.0.0"
   }
 }
-
