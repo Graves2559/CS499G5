@@ -110,7 +110,7 @@ https://random-words-here.trycloudflare.com
 
 That URL is publicly reachable over HTTPS and forwards traffic to this server on port 8000, with no warning page shown to visitors.
 
-> Like ngrok's free tier, this quick-tunnel URL is randomly generated and changes every time the tunnel is restarted. For a stable, named URL (e.g. `api.yourdomain.com`), you need a free Cloudflare account and a domain added to it, then run `cloudflared tunnel login`, `cloudflared tunnel create <name>`, configure a `config.yml` pointing at `http://localhost:8000`, and run `cloudflared tunnel run <name>` instead.
+> This quick-tunnel URL is randomly generated and changes every time the tunnel is restarted (likewise, ngrok). For a stable, named URL (e.g. `api.yourdomain.com`), you need a free Cloudflare account and a domain added to it, then run `cloudflared tunnel login`, `cloudflared tunnel create <name>`, configure a `config.yml` pointing at `http://localhost:8000`, and run `cloudflared tunnel run <name>` instead.
 
 
 ## Running the Program
@@ -122,7 +122,7 @@ python3 main.py
 
 python for Windows
 
-This starts uvicorn, binding to `0.0.0.0:8000` so the server is reachable over the LAN or through an ngrok tunnel.
+This starts uvicorn, binding to `0.0.0.0:8000` so the server is reachable over the LAN or through the tunneling service.
 
 
 # No longer used
