@@ -119,9 +119,6 @@ def main():
     dBM = DBManager()
     e2e = E2e(dBM, args)
 
-
-    pass
-
 def parseArgs():
     parser = argparse.ArgumentParser(
         description="Display statistics for a branch in a git repository."
@@ -147,8 +144,8 @@ def parseArgs():
         action="store_true"
     )
     group = parser.add_mutually_exclusive_group()   # Either e, d, a, l, r, c, or u
-    group.add_argument( "--e",help="Specification of the edit/rename operation to perform", action="store_true")
-    group.add_argument("--d", help="Specification of the delete operation to perform", action="store_true")
+    group.add_argument( "--e",help="Specification of the operation to perform: add (--a), delete (--d), or edit/rename (--e)", action="store_true")
+    group.add_argument("--d", help="Specification of the operation to perform: add (--a), delete (--d), or edit/rename (--e)", action="store_true")
     group.add_argument("--a", help="Specification of the operation to perform: add (--a), delete (--d), or edit/rename (--e)", action="store_true")
     group.add_argument("--l", help="Specification of the list operation to perform", action="store_true")
     group.add_argument("--r", help="Specification of the retrieve operation to perform", action="store_true")
