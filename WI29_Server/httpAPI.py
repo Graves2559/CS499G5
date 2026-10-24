@@ -36,6 +36,7 @@ class HttpAPI(FastAPI):
 
 
         # Static files (frontend) binded to the root/public URL (provided by the Tunneling service)
+        # CONNECTS "app" folder to the backend 
         self.mount("/", StaticFiles(directory="dist", html=True), name="static")
             
 
