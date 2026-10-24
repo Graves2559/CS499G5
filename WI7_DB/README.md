@@ -64,8 +64,48 @@ pip install pymongo pillow
 In Command Prompt, activate with `.venv\Scripts\activate.bat` instead. If PowerShell blocks the script, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
 
 
+## 4. Running the DB server
 
-## 4. Running the program
+Make a new terminal, outside of this IDE, such that the directory is global. Go ahead and run this:
+
+### MacOS
+
+1. Change directory to something like mongodb-macos-x86_64-enterprise--8.3.8 (based on OS)
+2. Go to the bin folder of said folder
+3. Start the server: ./mongod --dbpath ~/data/db
+
+### Linux
+
+If MongoDB was installed via a package manager (see step 2), it runs as a service:
+```bash
+sudo systemctl start mongod
+sudo systemctl status mongod    # confirm it is "active (running)"
+```
+To start it automatically on boot: `sudo systemctl enable mongod`.
+
+If you downloaded the MongoDB tarball instead (no service):
+1. Change directory to the extracted folder, e.g. `mongodb-linux-x86_64-...`
+2. Go to the `bin` folder
+3. Create the data folder once: `mkdir -p ~/data/db`
+4. Start the server: `./mongod --dbpath ~/data/db`
+
+### Windows
+
+If you chose "Run as a Service" during installation, MongoDB is already running. Check from PowerShell (as Administrator):
+```powershell
+Get-Service MongoDB
+Start-Service MongoDB    # only if it is not running
+```
+
+If you did not install it as a service:
+1. Open Command Prompt or PowerShell
+2. Change directory to the MongoDB bin folder, e.g. `cd "C:\Program Files\MongoDB\Server\8.0\bin"` (the version number may differ)
+3. Create the data folder once: `mkdir C:\data\db`
+4. Start the server: `.\mongod.exe --dbpath C:\data\db`
+
+Leave this terminal open while using the program.
+
+## 5. Running the program
 On Windows use `python` or `py` in place of `python3`.
 
 ```bash
