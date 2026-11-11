@@ -1,0 +1,8 @@
+
+pycloudflared
+uvicorn
+fastapi
+python-multipart
+psycopg[binary]
+pymongo
+requests

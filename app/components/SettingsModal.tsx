@@ -1,32 +1,31 @@
 import { useState, type Dispatch, type SetStateAction, type RefObject } from "react";
 import { X } from "lucide-react";
-import type { Preferences, FileEntry } from "../types";
+import type { Preferences } from "../types";
+import type { Files } from "../application/useFiles";
 import FilesView from "./FilesView";
 
 type SettingsModalProps = {
   dialogRef: RefObject<HTMLDialogElement | null>;
   preferences: Preferences;
   onChange: Dispatch<SetStateAction<Preferences>>;
-  entries: FileEntry[];
-  setEntries: Dispatch<SetStateAction<FileEntry[]>>;
+  files: Files;
 };
 
-export default function SettingsModal({ dialogRef, preferences, onChange, entries, setEntries }: SettingsModalProps) {
+export default function SettingsModal({ dialogRef, preferences, onChange, files }: SettingsModalProps) {
   return (<dialog ref={dialogRef} className="settings-dialog" aria-labelledby="settings-title" onClick={e => {
       if (e.target !== e.currentTarget) return;
       const rect = e.currentTarget.getBoundingClientRect();
       if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) dialogRef.current?.close();
     }}>
       <header className="settings-header"><h2 id="settings-title">Settings</h2><button className="icon-button" aria-label="Close settings" onClick={() => dialogRef.current?.close()}><X size={21} /></button></header>
-      <SettingsContent preferences={preferences} onChange={onChange} entries={entries} setEntries={setEntries} />
+      <SettingsContent preferences={preferences} onChange={onChange} files={files} />
     </dialog>);
 }
 
-function SettingsContent({ preferences, onChange, entries, setEntries }: {
+function SettingsContent({ preferences, onChange, files }: {
   preferences: Preferences;
   onChange: Dispatch<SetStateAction<Preferences>>;
-  entries: FileEntry[];
-  setEntries: Dispatch<SetStateAction<FileEntry[]>>;
+  files: Files;
 }) {
   const [section, setSection] = useState("General");
   const [billingNotice, setBillingNotice] = useState("");
@@ -37,7 +36,7 @@ function SettingsContent({ preferences, onChange, entries, setEntries }: {
       {sections.map(name => <button key={name} type="button" aria-current={section === name ? "page" : undefined} onClick={() => setSection(name)}>{name}</button>)}
     </nav>
     <section className={`settings-content${section === "Files" ? " files-settings-content" : ""}`} aria-label={`${section} settings`}>
-      {section === "Files" && <FilesView entries={entries} setEntries={setEntries} />}
+      {section === "Files" && <FilesView files={files} />}
       {section === "General" && <>
         <h3>General</h3>
         <p className="muted-copy">Encryption and conversion are not connected yet.</p>

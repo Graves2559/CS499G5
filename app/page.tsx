@@ -1,7 +1,11 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Plus, Settings } from "lucide-react";
-import type { InputType, OutputType, FileEntry, Preferences } from "./types";
+import type { InputType, OutputType, Preferences } from "./types";
+import { uploadProblem } from "./domain/uploads";
 import { useFileUrl } from "./hooks/useFileUrl";
+import { useAuth } from "./application/useAuth";
+import { useFiles } from "./application/useFiles";
+import { api } from "./infrastructure/api";
 import InputPanel from "./components/InputPanel";
 import OutputPanel from "./components/OutputPanel";
 import AuthModal from "./components/AuthModal";
@@ -21,64 +25,50 @@ export default function Home() {
   const [word, setWord] = useState("");
   const [status, setStatus] = useState("");
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
-  const dialog = useRef<HTMLDialogElement>(null);
-
-  const [preferences, setPreferences] = useState<Preferences>({ encryption: false, lossless: true, background: "#0b0610" });
-  const [entries, setEntries] = useState<FileEntry[]>([
-    { id: "input", parentId: null, name: "Input", kind: "folder", description: "Uploaded files and source text" },
-    { id: "output", parentId: null, name: "Output", kind: "folder", description: "Files and text after Run" },
-  ]);
-  const settingsDialog = useRef<HTMLDialogElement>(null);
   const [authNotice, setAuthNotice] = useState("");
+  const [preferences, setPreferences] = useState<Preferences>({ encryption: false, lossless: true, background: "#0b0610" });
+  const dialog = useRef<HTMLDialogElement>(null);
+  const settingsDialog = useRef<HTMLDialogElement>(null);
 
-  function storeFile(parentId: string, file: File) {
-    setEntries(current => current.some(entry => entry.parentId === parentId && entry.file === file) ? current : [...current, {
-      id: crypto.randomUUID(), parentId, name: file.name, kind: "file", description: "", file,
-    }]);
+  // The one place where the application layer is connected to the infrastructure (the server gateway).
+  const auth = useAuth(api);
+  const files = useFiles(api, !!auth.user, setError);
+
+  useEffect(() => {
+    if (!auth.redirectError) return;
+    setAuthMode("signin"); setAuthNotice(auth.redirectError); dialog.current?.showModal();
+  }, [auth.redirectError]);
+
+  async function signIn(username: string, password: string) { await auth.signIn(username, password); dialog.current?.close(); }
+  async function signUp(username: string, email: string, password: string) { await auth.signUp(username, email, password); dialog.current?.close(); }
+  async function signOut() {
+    await auth.signOut();
+    // Clear what the previous user had on screen
+    setText(""); setSummary(""); setImageFile(null); setPdfFile(null); setOutputImage(null); setOutputPdf(null);
+    setStatus(""); setError("");
   }
-  function storeText(parentId: string, value: string) {
-    setEntries(current => {
-      const id = `${parentId}-text`;
-      return current.some(entry => entry.id === id) ? current.map(entry => entry.id === id ? { ...entry, text: value } : entry) : [...current, {
-        id, parentId, name: parentId === "input" ? "input.txt" : "summary.txt", kind: "file", description: "", text: value,
-      }];
-    });
-  }
+
   const activeFile = input === "PDF" ? pdfFile : imageFile;
   const canRun = input === "Texts" || !!activeFile;
 
   function chooseFile(candidate?: File) {
     if (!candidate) return;
-    if (input === "PDF") {
-      if (candidate.type !== "application/pdf" && !(candidate.type === "" && /\.pdf$/i.test(candidate.name))) {
-        setError("Please choose a PDF file."); return;
-      }
-      if (candidate.size > 25 * 1024 * 1024) {
-        setError("Please choose a PDF no larger than 25MB."); return;
-      }
-      setPdfFile(candidate);
-    } else {
-      if (!["image/png", "image/jpeg"].includes(candidate.type)) {
-        setError("Please choose a PNG or JPG image."); return;
-      }
-      if (candidate.size > 10 * 1024 * 1024) {
-        setError("Please choose an image no larger than 10MB."); return;
-      }
-      setImageFile(candidate);
-    }
-    storeFile("input", candidate);
+    const problem = uploadProblem(input === "PDF" ? "PDF" : "Image", candidate);
+    if (problem) { setError(problem); return; }
+    if (input === "PDF") setPdfFile(candidate); else setImageFile(candidate);
+    files.storeFile("input", candidate);
     setError(""); setStatus("");
   }
 
   function run() {
     if (input === "Texts") {
-      storeText("input", text); storeText("output", text);
+      files.storeText("input", text); files.storeText("output", text);
       setSummary(text); setStatus("Text ready. Select Summary in Output to view it.");
     } else if (input === "Image" && imageFile) {
-      storeFile("output", imageFile);
+      files.storeFile("output", imageFile);
       setOutputImage(imageFile); setStatus("Image ready. Select Image in Output to view it.");
     } else if (input === "PDF" && pdfFile) {
-      storeFile("output", pdfFile);
+      files.storeFile("output", pdfFile);
       setOutputPdf(pdfFile); setStatus("PDF ready. Select PDF in Output to view or download it.");
     }
     setWord("");
@@ -87,7 +77,9 @@ export default function Home() {
   return <div className="app-shell" style={{ "--background": preferences.background } as CSSProperties}>
     <header className="topbar">
       <a className="brand" href="/" aria-label="ClosedAI home"><span className="brand-orb" />ClosedAI</a>
-      <button className="pill login" onClick={() => { setAuthMode("signin"); setAuthNotice(""); setWord(""); dialog.current?.showModal(); }}>Login</button>
+      {auth.user
+        ? <div className="account"><span className="account-name">{auth.user}</span><button className="pill login" onClick={signOut}>Log out</button></div>
+        : <button className="pill login" onClick={() => { setAuthMode("signin"); setAuthNotice(""); setWord(""); dialog.current?.showModal(); }}>Login</button>}
     </header>
     <div className="workspace">
       <aside className="sidebar" aria-label="Recent chats">
@@ -125,8 +117,7 @@ export default function Home() {
       dialogRef={settingsDialog}
       preferences={preferences}
       onChange={setPreferences}
-      entries={entries}
-      setEntries={setEntries}
+      files={files}
     />
     <AuthModal
       dialogRef={dialog}
@@ -134,6 +125,8 @@ export default function Home() {
       setAuthMode={setAuthMode}
       authNotice={authNotice}
       setAuthNotice={setAuthNotice}
+      onSignIn={signIn}
+      onSignUp={signUp}
     />
   </div>;
 }

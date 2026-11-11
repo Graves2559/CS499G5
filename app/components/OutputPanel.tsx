@@ -2,7 +2,7 @@ import { useState, type Dispatch, type SetStateAction } from "react";
 import { Plus, ChevronDown, Download, BookOpen } from "lucide-react";
 import type { OutputType } from "../types";
 import { useFileUrl } from "../hooks/useFileUrl";
-import { saveDownload } from "../utils/download";
+import { saveDownload } from "../infrastructure/download";
 
 type OutputPanelProps = {
   outputType: OutputType;

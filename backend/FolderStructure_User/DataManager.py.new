@@ -1,0 +1,99 @@
+'''
+DataManager.py
+
+'''
+
+from PageManager import PageManager
+from StorageManager import StorageManager
+from StorageNode import StorageNode, File, Folder
+from Item import Item
+from Sorter import SortMetric
+
+# Bridge between facade (e2e) pattern and the lower-level implementations.
+# ALL operations of e2e.py for the PM AND SM are handled through this class.
+class DataManager():
+    def __init__(self):
+        self.sM = StorageManager()
+        self.pM = PageManager(self.sM)
+
+    # ===================== Storage tree access (read-only views of sM's named folders) =====================
+
+    @property
+    def root(self) -> Folder:
+        return self.sM.root
+
+    @property
+    def favorites(self) -> Folder:
+        return self.sM.favorites
+
+    @property
+    def input(self) -> Folder:
+        return self.sM.input
+
+    @property
+    def output(self) -> Folder:
+        return self.sM.output
+
+    # Replaces StorageManager's fresh skeleton with a tree loaded from
+    # persistence. StorageManager's business-rule checks compare against these
+    # specific instances (e.g. `folder == self.favorites`), so the loaded folders
+    # must replace the skeleton's rather than sit beside them. Any argument
+    # left as None keeps its current folder.
+    def LoadTree(self, root: Folder, favorites: Folder = None,
+                 input: Folder = None, output: Folder = None):
+        self.sM.root = root
+        if favorites is not None:
+            self.sM.favorites = favorites
+        if input is not None:
+            self.sM.input = input
+        if output is not None:
+            self.sM.output = output
+
+    # Appends directly (not via Add(), which would reparent) -- mirrors what
+    # StorageManager.ToggleFavorite does: Favorites shares the same file
+    # object reference as its real folder.
+    def AddToFavoritesView(self, file: File):
+        self.sM.favorites.children.append(file)
+
+    # ===================== Storage operations: sM =====================
+
+    def DisplayAll(self, metric: SortMetric):
+        self.sM.DisplayAll(metric)
+
+    def DisplayFolder(self, folder: Folder, metric: SortMetric):
+        self.sM.DisplayFolder(folder, metric)
+
+    def DisplayFile(self, file: File):
+        self.sM.DisplayFile(file)
+
+    def Add(self, node: StorageNode, folder: Folder):
+        self.sM.Add(node, folder)
+
+    def Rename(self, node: StorageNode, newName: str):
+        self.sM.Rename(node, newName)
+
+    def Move(self, node: StorageNode, folder: Folder):
+        return self.sM.Move(node, folder)
+
+    def Delete(self, node: StorageNode):
+        self.sM.Delete(node)
+
+    def ToggleFavorite(self, file: File):
+        self.sM.ToggleFavorite(file)
+
+    def DuplicateFile(self, file: File, folder: Folder):
+        self.sM.DuplicateFile(file, folder)
+
+    # ===================== Page operations: pM =====================
+
+    def CreatePage(self, node: StorageNode, folder: Folder):
+        self.pM.CreatePage(node, folder)
+
+    def AddItem(self, file: File, item: Item):
+        self.pM.AddItem(file, item)
+
+    def EditItem(self, file: File, item: Item, newText: str):
+        self.pM.EditItem(file, item, newText)
+
+    def DeleteItem(self, file: File, item: Item, position: int):
+        self.pM.DeleteItem(file, item, position)

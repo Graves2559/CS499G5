@@ -9,6 +9,10 @@ export type FileEntry = {
   description: string;
   file?: File;
   text?: string;
+  mimeType?: string;
+  size?: number;
+  favorite?: boolean;
+  dateModified?: string;
 };
 
 export type Preferences = {

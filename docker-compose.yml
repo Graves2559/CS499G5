@@ -1,9 +1,95 @@
-# Note: ./WI29_Server is the current folder. When integrating it, it will most likely be another folder's name.
+# One command starts everything: docker compose up --build
+#   wi29-server  -> http://localhost:8000
+#   postgres     -> localhost:5432   (container UserCredentials; user_db, keyrecord_db, indexDB; schema in backend/Database/init)
+#   mongo        -> localhost:27018  (container IMG_VID_TXT; MongoDB Compass: mongodb://localhost:27018, database UserFiles)
+#   pgadmin      -> http://localhost:5050
+# Inside Docker the services reach each other as postgres:5432 and mongo:27017.
+# Optional overrides go in a .env file next to this one (see backend/Database/.env.example).
+# Postgres only runs the init SQL on an empty volume: after editing it, run
+# `docker compose down -v` (deletes the DB data) and `docker compose up --build`.
 
 services:
   wi29-server:
     build: 
       context: .
-      dockerfile: WI29_Server/Dockerfile
+      dockerfile: backend/WI29_Server/Dockerfile
     ports:
       - "8000:8000"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      MONGO_URI: mongodb://mongo:27017
+      # The single login for now (stored hashed in the database). Change in .env; remove the user's row to re-seed.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-adminUsername}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-password}
+      # "Continue with Google" (see README). Empty = the button reports that Google sign-in is not set up.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      GOOGLE_DISCOVERY_URL: ${GOOGLE_DISCOVERY_URL:-https://accounts.google.com/.well-known/openid-configuration}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+
+  postgres:
+    build:
+      context: ./backend/Database
+      dockerfile: Dockerfile
+    container_name: UserCredentials
+    restart: unless-stopped
+    environment:
+      # Superuser used only to run the init scripts (which then CREATE the 3 separate databases).
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - journaling_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Holds the actual image/text/video content (GridFS). Postgres index_entries.media_id
+  # stores the matching Mongo file _id. Host port 27018 avoids a locally installed mongod on 27017.
+  mongo:
+    image: mongo:7
+    container_name: IMG_VID_TXT
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27018}:27017"
+    volumes:
+      - journaling_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-changeme}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - journaling_pgadmin_data:/var/lib/pgadmin
+      # Pre-registers the Postgres server as "UserCredentials" (loaded on pgAdmin's first start only)
+      - ./backend/Database/pgadmin-servers.json:/pgadmin4/servers.json:ro
+
+volumes:
+  journaling_postgres_data:
+  journaling_mongo_data:
+  journaling_pgadmin_data:

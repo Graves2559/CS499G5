@@ -1,3 +1,0 @@
-
-TEST_MODE = True
-LIST_LIMIT = 50

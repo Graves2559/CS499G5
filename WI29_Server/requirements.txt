@@ -1,4 +1,0 @@
-
-pycloudflared
-uvicorn
-fastapi
