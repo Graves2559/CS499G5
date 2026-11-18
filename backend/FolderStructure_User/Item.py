@@ -5,7 +5,10 @@ Defines the Item class used in the journaling program.
 
 '''
 
-import config
+try:
+    from . import config
+except ImportError:
+    import config
 
 class Item:
     def __init__(self, content: str):

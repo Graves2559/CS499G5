@@ -5,8 +5,12 @@ StorageNode.py
 '''
 from __future__ import annotations  # for Folder instance within StorageNode
 import re
-import config
-from Item import Item
+try:
+    from . import config
+    from .Item import Item
+except ImportError:
+    import config
+    from Item import Item
 from enum import Enum
 
 

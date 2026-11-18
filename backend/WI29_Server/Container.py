@@ -8,6 +8,8 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
+from AI.application.ModelCatalogService import ModelCatalogService
+from AI.infrastructure.StaticModelCatalog import StaticModelCatalog
 from UserLogin.application.UserManager import UserManager
 from UserLogin.infrastructure.ScryptPasswordHasher import ScryptPasswordHasher
 from UserLogin.infrastructure.UserDatabaseAdapter import UserDatabaseAdapter
@@ -27,6 +29,7 @@ class Container:
     auth: AuthService
     files: FileService
     google: GoogleSignIn
+    models: ModelCatalogService
 
     # The databases may still be starting when the server starts, so this retries. The web server stays up meanwhile.
     def seedAdmin(self, attempts: int = 30, delaySeconds: float = 2):
@@ -64,4 +67,4 @@ def buildContainer(settings: Optional[Settings] = None) -> Container:
         InMemoryPendingLogins(STATE_SECONDS),
         s.googleRedirectUri,
     )
-    return Container(s, auth, files, google)
+    return Container(s, auth, files, google, ModelCatalogService(StaticModelCatalog()))
