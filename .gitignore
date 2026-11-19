@@ -3,6 +3,14 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Large local test videos (not meant for version control)
+*.mp4
+*.MP4
+
+# Local HTTPS dev certs (mkcert)
+certs/
+*.pem
+
 # C extensions
 *.so
 
@@ -216,3 +224,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Website dependencies and temporary build files
+/node_modules/
+/work/
+/.venv-rapidocr/
