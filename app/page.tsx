@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Plus, Settings } from "lucide-react";
-import type { InputType, OutputType, Preferences } from "./types";
+import type { InputType, OutputType, Preferences, ProcessingOptions } from "./types";
 import { uploadProblem } from "./domain/uploads";
 import { useFileUrl } from "./hooks/useFileUrl";
 import { useAuth } from "./application/useAuth";
@@ -16,6 +16,13 @@ export default function Home() {
   const [outputType, setOutputType] = useState<OutputType>("Summary");
   const [text, setText] = useState("");
   const [summary, setSummary] = useState("");
+  const [processingOptions, setProcessingOptions] = useState<ProcessingOptions>({
+    ocr: true,
+    llm: true,
+    volume: 100,
+    pdf: false,
+    prompt: "",
+  });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [outputImage, setOutputImage] = useState<File | null>(null);
@@ -94,6 +101,8 @@ export default function Home() {
           error={error}
           status={status}
           canRun={canRun}
+          processingOptions={processingOptions}
+          onProcessingOptionsChange={setProcessingOptions}
           onTypeChange={type => { setInput(type); setError(""); setStatus(""); }}
           onTextChange={setText}
           onFileChange={chooseFile}
@@ -109,6 +118,8 @@ export default function Home() {
           outputPdf={outputPdf}
           word={word}
           setWord={setWord}
+          volume={processingOptions.volume}
+          onVolumeChange={volume => setProcessingOptions(current => ({ ...current, volume }))}
         />
       </main>
     </div>

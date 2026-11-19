@@ -1,6 +1,14 @@
 export type InputType = "Image" | "Texts" | "PDF";
 export type OutputType = "Summary" | "Image" | "PDF";
 
+export type ProcessingOptions = {
+  ocr: boolean;
+  llm: boolean;
+  volume: number;
+  pdf: boolean;
+  prompt: string;
+};
+
 export type FileEntry = {
   id: string;
   parentId: string | null;

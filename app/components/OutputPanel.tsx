@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
-import { Plus, ChevronDown, Download, BookOpen } from "lucide-react";
+import { Plus, ChevronDown, Download, BookOpen, Volume2, VolumeX } from "lucide-react";
 import type { OutputType } from "../types";
 import { useFileUrl } from "../hooks/useFileUrl";
 import { saveDownload } from "../infrastructure/download";
@@ -12,9 +12,11 @@ type OutputPanelProps = {
   outputPdf: File | null;
   word: string;
   setWord: Dispatch<SetStateAction<string>>;
+  volume: number;
+  onVolumeChange: (volume: number) => void;
 };
 
-export default function OutputPanel({ outputType, setOutputType, summary, outputImage, outputPdf, word, setWord }: OutputPanelProps) {
+export default function OutputPanel({ outputType, setOutputType, summary, outputImage, outputPdf, word, setWord, volume, onVolumeChange }: OutputPanelProps) {
   const outputImageUrl = useFileUrl(outputImage);
   const outputPdfUrl = useFileUrl(outputPdf);
   const [defineNotice, setDefineNotice] = useState("");
@@ -47,6 +49,19 @@ export default function OutputPanel({ outputType, setOutputType, summary, output
               <object className="pdf-viewer" data={outputPdfUrl} type="application/pdf" aria-label={`PDF preview: ${outputPdf.name}`}><p>This browser cannot preview this PDF. Use Download PDF below.</p></object>
               <div className="pdf-download"><span>{outputPdf.name}</span><button className="pill" type="button" onClick={downloadPdf}><Download size={15} />Download PDF</button></div>
             </> : <div className="media-empty empty-state"><span className="empty-icon"><Plus size={20} strokeWidth={1.5} /></span><p>Upload {outputType === "PDF" ? "a PDF" : "an image"} on the left,<br />then click Run to show it here.</p></div>}
+          </div>
+          <div className="output-actions">
+            <div className="speech-controls" role="group" aria-label="Text to speech">
+              <button className="speech-button" type="button" aria-label="Read output aloud" title="Read output aloud">
+                {volume > 0 ? <Volume2 size={19} /> : <VolumeX size={19} />}
+              </button>
+              <div className="speech-volume-popover">
+                <div className="speech-volume-card">
+                  <label htmlFor="speech-volume">Volume <span>{volume}%</span></label>
+                  <input id="speech-volume" className="speech-volume" type="range" min="0" max="100" step="1" value={volume} aria-valuetext={`${volume}%`} onChange={e => onVolumeChange(Number(e.target.value))} />
+                </div>
+              </div>
+            </div>
           </div>
         </section>);
 }
