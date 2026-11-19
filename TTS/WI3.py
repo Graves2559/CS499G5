@@ -1,5 +1,6 @@
 # TTS
 import os
+import sys
 import platform
 import re
 import shutil
@@ -7,8 +8,14 @@ import signal
 import subprocess
 import tempfile
 import threading
+ 
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+sys.path.append(os.path.join(REPO_ROOT, "backend", "FolderStructure_User")) 
+
+from StorageNode import File
 from gtts import gTTS
 
 MAX_CHARS = 400  # max characters sent to gTTS per request
@@ -22,11 +29,6 @@ VOICES = {
     "5": ("Spanish (Mexico)", "es", "com.mx"),
     "6": ("French (France)", "fr", "fr"),
 }
-
-def load_text(path):
-    with open(path, encoding="utf-8") as f:
-        return f.read()
-
 
 def split_into_chunks(text, max_chars=MAX_CHARS):
     # Split text into chunks of at most max_chars, breaking at sentences.
@@ -83,6 +85,14 @@ class Reader:
         self.stop_flag = threading.Event()
         self.paused = False
 
+    def read_file(self, file: File):
+        text = file.getData()
+        
+        if text.strip() == "":
+            print("File is empty.")
+            return
+        self.start(text)
+            
     #  controls 
     def start(self, text):
         self.stop()
@@ -118,7 +128,7 @@ class Reader:
             self.paused = True
             print("Paused.")
 
-    # ---- background playback -------------------------------------------
+    # background playback 
     def _run(self, text, voice, stop_flag):
         label, lang, tld = voice
         chunks = split_into_chunks(text)
@@ -164,30 +174,24 @@ def main():
     reader = Reader()
     menu = """
 TTS Document Reader
- 1. Read a .txt file aloud
+ 1. Read a file aloud
  2. Pause / resume
  3. Stop
  4. Choose voice
  5. Read OCR-extracted text (not implemented yet)
- 6. About / limitations
- 7. Quit
+ 6. Quit
 """
     while True:
         print(menu)
         choice = input("> ").strip()
 
         if choice == "1":
-            raw = input("Path to .txt file: ").strip().strip("'\"")
-            path = os.path.expanduser(raw.replace("\\ ", " "))
-            try:
-                text = load_text(path)
-            except OSError as e:
-                print(f"Couldn't open file: {e}")
-                continue
-            if not text.strip():
-                print("That file is empty.")
-                continue
-            reader.start(text)
+            text = input("Type text for TTS: ")
+            f = File()
+            f.setName("test")
+            f.setData(text) # file holds the text
+            reader.read_file(f) # read_file calls getData and plays it with TTS
+            
         elif choice == "2":
             reader.toggle_pause()
         elif choice == "3":
