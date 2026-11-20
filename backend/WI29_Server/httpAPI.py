@@ -52,7 +52,7 @@ class HttpAPI(FastAPI):
         c = self.container
         self.include_router(buildAuthRouter(c.auth, c.google, c.settings.sessionSeconds))
         self.include_router(buildFileRouter(c.auth, c.files))
-        self.include_router(buildAIRouter(c.models))
+        self.include_router(buildAIRouter(c.models, c.aiWorkflow, c.auth, c.files))
 
         # Static files (frontend) binded to the root/public URL (provided by the Tunneling service)
         # CONNECTS "app" folder to the backend

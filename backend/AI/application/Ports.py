@@ -14,7 +14,7 @@ class ModelCatalog(Protocol):
 
 class OCREngine(Protocol):
     # The adapter reads input_file.getData() and returns normalized text.
-    # Do not return a RapidOCR/PaddleOCR response object from this boundary.
+    # Do not return a provider-specific response object from this boundary.
     def extract_text(self, input_file: File, model_id: str) -> OCRResult:
         ...
 

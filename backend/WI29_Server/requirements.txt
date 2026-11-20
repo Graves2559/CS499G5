@@ -6,3 +6,9 @@ python-multipart
 psycopg[binary]
 pymongo
 requests
+ollama
+rapidocr
+onnxruntime
+Pillow
+transformers
+torch

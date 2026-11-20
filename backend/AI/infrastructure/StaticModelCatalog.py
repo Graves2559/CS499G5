@@ -12,6 +12,8 @@ class StaticModelCatalog:
         self._models = tuple(models or (
             ModelInfo("llama3.1:8b", "Llama 3.1 8B", "summarizer", True),
             ModelInfo("mistral:7b", "Mistral 7B", "summarizer", False),
+            ModelInfo("rapidocr-standard", "Standard font OCR", "ocr", True),
+            ModelInfo("trocr-handwritten", "Handwriting recognition", "ocr", True),
         ))
 
     def list_models(self) -> Sequence[ModelInfo]:
