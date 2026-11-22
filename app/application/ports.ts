@@ -1,6 +1,6 @@
 // Ports: what the application layer needs from the outside world. The infrastructure layer implements them
 // (infrastructure/api.ts); the hooks here depend only on these interfaces, never on fetch or a URL.
-import type { FileEntry } from "../types";
+import type { AIModel, FileEntry } from "../types";
 
 export interface AuthGateway {
   me(): Promise<string | null>;
@@ -16,4 +16,8 @@ export interface FilesGateway {
   // Creates the file, or replaces its content when the id already exists.
   putFile(id: string, parentId: string, name: string, content: Blob): Promise<void>;
   fileContent(id: string): Promise<Blob>;
+}
+
+export interface AIGateway {
+  listModels(): Promise<AIModel[]>;
 }

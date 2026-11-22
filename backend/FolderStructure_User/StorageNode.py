@@ -5,8 +5,12 @@ StorageNode.py
 '''
 from __future__ import annotations  # for Folder instance within StorageNode
 import re
-import config
-from Item import Item
+try:
+    from . import config
+    from .Item import Item
+except ImportError:
+    import config
+    from Item import Item
 from enum import Enum
 
 
@@ -69,7 +73,7 @@ class File(StorageNode):
         super().__init__()
         self.entryType: EntryType = None
         self.entryNum: int = 0
-        self.data: str = ""
+        self.data: str | bytes = ""
         self.isFavorite: bool = False
         self.ItemList: list[Item] = []
         self.date_modified: str = ""  # Added date_modified attribute for sorting by date modified
@@ -132,7 +136,7 @@ class File(StorageNode):
         print(f"\nGetting entry num: {self.entryNum}")
         return self.entryNum
 
-    def getData(self)->str: 
+    def getData(self)->str | bytes:
         print(f"\nGetting data: {self.data}")
         return self.data
 
@@ -159,7 +163,7 @@ class File(StorageNode):
         self.entryNum = entryNum
         if (config.TEST_MODE): print(f"Entry num set to: {self.entryNum}")
 
-    def setData(self, data: str): 
+    def setData(self, data: str | bytes):
         if (config.TEST_MODE): print(f"\nSetting data: {data}")
         self.data = data
         if (config.TEST_MODE): print(f"Data set to: {self.data}")

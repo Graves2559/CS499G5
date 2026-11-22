@@ -1,6 +1,13 @@
 export type InputType = "Image" | "Texts" | "PDF";
 export type OutputType = "Summary" | "Image" | "PDF";
 
+export type AIModel = {
+  id: string;
+  name: string;
+  kind: "summarizer" | "ocr";
+  available: boolean;
+};
+
 export type FileEntry = {
   id: string;
   parentId: string | null;

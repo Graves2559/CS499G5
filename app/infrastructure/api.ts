@@ -1,7 +1,7 @@
 // Infrastructure: the only code that talks to the server (fetch, URLs, status codes). It implements the gateway
 // ports of the application layer, so nothing else needs to know how the server is reached.
-import type { FileEntry } from "../types";
-import type { AuthGateway, FilesGateway } from "../application/ports";
+import type { AIModel, FileEntry } from "../types";
+import type { AIGateway, AuthGateway, FilesGateway } from "../application/ports";
 
 export class ApiError extends Error {
   status: number;
@@ -23,7 +23,7 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
 
 const json = (body: unknown): RequestInit => ({ headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
-export const api: AuthGateway & FilesGateway = {
+export const api: AuthGateway & FilesGateway & AIGateway = {
   async me() { return (await (await request("/api/me")).json()).username ?? null; },
   async login(username, password) {
     return (await (await request("/api/login", { method: "POST", ...json({ username, password }) })).json()).username;
@@ -45,4 +45,5 @@ export const api: AuthGateway & FilesGateway = {
     await request(`/api/files/${encodeURIComponent(id)}`, { method: "PUT", body: form });
   },
   async fileContent(id) { return (await request(`/api/files/${encodeURIComponent(id)}/content`)).blob(); },
+  async listModels(): Promise<AIModel[]> { return (await request("/api/ai/models")).json(); },
 };

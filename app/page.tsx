@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Plus, Settings } from "lucide-react";
-import type { InputType, OutputType, Preferences } from "./types";
+import type { AIModel, InputType, OutputType, Preferences } from "./types";
 import { uploadProblem } from "./domain/uploads";
 import { useFileUrl } from "./hooks/useFileUrl";
 import { useAuth } from "./application/useAuth";
@@ -10,12 +10,15 @@ import InputPanel from "./components/InputPanel";
 import OutputPanel from "./components/OutputPanel";
 import AuthModal from "./components/AuthModal";
 import SettingsModal from "./components/SettingsModal";
+import ModelSelector from "./components/ModelSelector";
 
 export default function Home() {
   const [input, setInput] = useState<InputType>("Image");
   const [outputType, setOutputType] = useState<OutputType>("Summary");
   const [text, setText] = useState("");
   const [summary, setSummary] = useState("");
+  const [models, setModels] = useState<AIModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [outputImage, setOutputImage] = useState<File | null>(null);
@@ -33,6 +36,13 @@ export default function Home() {
   // The one place where the application layer is connected to the infrastructure (the server gateway).
   const auth = useAuth(api);
   const files = useFiles(api, !!auth.user, setError);
+
+  useEffect(() => {
+    api.listModels().then(availableModels => {
+      setModels(availableModels);
+      setSelectedModel(availableModels.find(model => model.available && model.kind === "summarizer")?.id ?? "");
+    }).catch(() => setError("AI models could not be loaded."));
+  }, []);
 
   useEffect(() => {
     if (!auth.redirectError) return;
@@ -86,6 +96,7 @@ export default function Home() {
         <div className="sidebar-heading"><h2>Recent</h2><button className="pill"><Plus size={13} />New chat</button></div>
       </aside>
       <main className="panels">
+        <ModelSelector models={models} selectedModel={selectedModel} onSelect={setSelectedModel} />
         <InputPanel
           input={input}
           text={text}
