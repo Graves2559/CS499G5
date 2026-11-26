@@ -8,10 +8,10 @@
         "-p",
         "test*.py"
     ],
-    "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.defaultPackageManager": "ms-python.python:pip",
     "code-runner.executorMap": {
-        "python": "$workspaceRoot/.venv/bin/python -u $fullFileName"
+        "python": "py -3.12 -u $fullFileName"
     },
     "code-runner.respectShebang": false
 }
