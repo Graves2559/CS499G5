@@ -142,8 +142,15 @@ def save_loss_plot(
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150)
-    plt.close()
+    temporary_path = output_path.with_name(
+        f".{output_path.stem}.tmp{output_path.suffix}"
+    )
+    try:
+        plt.savefig(temporary_path, dpi=150)
+        temporary_path.replace(output_path)
+    finally:
+        plt.close()
+        temporary_path.unlink(missing_ok=True)
 
 
 def train(args: argparse.Namespace) -> None:
@@ -164,12 +171,9 @@ def train(args: argparse.Namespace) -> None:
         model.train()
         train_dataset = load_dataset(DATASET_NAME, split="train", streaming=True)
         if args.shuffle_buffer > 1:
-            buffer_size = args.shuffle_buffer
-            if args.samples > 0:
-                buffer_size = min(buffer_size, args.samples)
             train_dataset = train_dataset.shuffle(
                 seed=args.seed + epoch,
-                buffer_size=max(2, buffer_size),
+                buffer_size=args.shuffle_buffer,
             )
 
         epoch_loss = 0.0
@@ -200,6 +204,12 @@ def train(args: argparse.Namespace) -> None:
             print(
                 f"Epoch {epoch + 1}/{args.epochs} | "
                 f"train_loss={train_loss:.4f} | validation_skipped"
+            )
+            save_loss_plot(
+                train_losses,
+                validation_epochs,
+                validation_losses,
+                args.loss_plot,
             )
             continue
 
@@ -259,13 +269,12 @@ def train(args: argparse.Namespace) -> None:
             )
             print(f"Saved best checkpoint to {args.checkpoint}")
 
-    save_loss_plot(
-        train_losses,
-        validation_epochs,
-        validation_losses,
-        args.loss_plot,
-    )
-    print(f"Saved loss graph to {args.loss_plot}")
+        save_loss_plot(
+            train_losses,
+            validation_epochs,
+            validation_losses,
+            args.loss_plot,
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -277,7 +286,12 @@ def parse_args() -> argparse.Namespace:
         default=256,
         help="Validation rows per epoch; 0 means the whole validation split.",
     )
-    parser.add_argument("--shuffle-buffer", type=int, default=10000)
+    parser.add_argument(
+        "--shuffle-buffer",
+        type=int,
+        default=10000,
+        help="Rows held for approximate streaming shuffle; larger values use more memory.",
+    )
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--hidden-size", type=int, default=128)
