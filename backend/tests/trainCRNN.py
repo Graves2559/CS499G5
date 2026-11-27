@@ -6,9 +6,11 @@ import argparse
 import string
 import sys
 from collections.abc import Iterable, Iterator
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 import torch
+from datasets import Image as DatasetImage
 from datasets import disable_progress_bars, load_dataset
 from PIL import Image
 from torch import Tensor, nn
@@ -46,6 +48,23 @@ def prepare_image(image: Image.Image) -> tuple[Tensor, int]:
     return tensor, width
 
 
+def decode_dataset_image(value: Any) -> Image.Image:
+    if isinstance(value, Image.Image):
+        return value
+    if not isinstance(value, dict):
+        raise TypeError("Dataset image column did not produce image data.")
+
+    image_bytes = value.get("bytes")
+    image_path = value.get("path")
+    source = BytesIO(image_bytes) if image_bytes is not None else image_path
+    if source is None:
+        raise ValueError("Dataset image has neither bytes nor a path.")
+
+    with Image.open(source) as image:
+        image.load()
+        return image.copy()
+
+
 def collate_batch(
     examples: list[tuple[Tensor, list[int], int]],
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
@@ -74,18 +93,26 @@ def batches(
 ) -> Iterator[tuple[Tensor, Tensor, Tensor, Tensor]]:
     pending: list[tuple[Tensor, list[int], int]] = []
     iterator = iter(dataset)
+    sample_count = 0
     try:
-        for sample_index, row in enumerate(iterator, start=1):
-            image = row["image"]
-            if not isinstance(image, Image.Image):
-                raise TypeError("Dataset image column did not produce a PIL image.")
+        for row_index, row in enumerate(iterator, start=1):
+            try:
+                image = decode_dataset_image(row["image"])
+            except OSError as error:
+                print(
+                    f"Skipping unreadable image at streamed row {row_index}: {error}",
+                    file=sys.stderr,
+                )
+                continue
+
             image_tensor, width = prepare_image(image)
             pending.append((image_tensor, encode_label(str(row["label"])), width))
+            sample_count += 1
 
             if len(pending) == batch_size:
                 yield collate_batch(pending)
                 pending = []
-            if sample_limit > 0 and sample_index >= sample_limit:
+            if sample_limit > 0 and sample_count >= sample_limit:
                 break
     finally:
         close = getattr(iterator, "close", None)
@@ -169,7 +196,9 @@ def train(args: argparse.Namespace) -> None:
 
     for epoch in range(args.epochs):
         model.train()
-        train_dataset = load_dataset(DATASET_NAME, split="train", streaming=True)
+        train_dataset = load_dataset(
+            DATASET_NAME, split="train", streaming=True
+        ).cast_column("image", DatasetImage(decode=False))
         if args.shuffle_buffer > 1:
             train_dataset = train_dataset.shuffle(
                 seed=args.seed + epoch,
@@ -214,7 +243,9 @@ def train(args: argparse.Namespace) -> None:
             continue
 
         model.eval()
-        val_dataset = load_dataset(DATASET_NAME, split="val", streaming=True)
+        val_dataset = load_dataset(
+            DATASET_NAME, split="val", streaming=True
+        ).cast_column("image", DatasetImage(decode=False))
         val_loss_total = 0.0
         val_batch_count = 0
         correct_predictions = 0
