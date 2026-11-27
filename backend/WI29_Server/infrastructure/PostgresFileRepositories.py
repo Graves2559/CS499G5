@@ -89,7 +89,7 @@ class PostgresFolderRepository(_Postgres):
 
 class PostgresFileIndex(_Postgres):
     _COLUMNS = ("entry_id, parent_folder_id, name, description, content_type, size_bytes, is_favorite, "
-                "date_modified, media_id")
+                "date_modified, media_id, key_version")
 
     def list(self, username: str) -> List[FileEntry]:
         with self._connect() as conn:
@@ -111,12 +111,13 @@ class PostgresFileIndex(_Postgres):
             try:
                 conn.execute(
                     "INSERT INTO index_entries (entry_id, username, name, parent_folder_id, description, "
-                    "media_id, content_type, size_bytes, date_modified) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "media_id, content_type, size_bytes, date_modified, key_version) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                     "ON CONFLICT (username, entry_id) DO UPDATE SET media_id = EXCLUDED.media_id, "
                     "content_type = EXCLUDED.content_type, size_bytes = EXCLUDED.size_bytes, "
-                    "date_modified = EXCLUDED.date_modified",
+                    "date_modified = EXCLUDED.date_modified, key_version = EXCLUDED.key_version",
                     (entry.id, username, entry.name, entry.parentId, entry.description, entry.mediaId,
-                     entry.contentType, entry.size, entry.dateModified),
+                     entry.contentType, entry.size, entry.dateModified, entry.keyVersion),
                 )
             except UniqueViolation:
                 raise ConflictError("duplicate")

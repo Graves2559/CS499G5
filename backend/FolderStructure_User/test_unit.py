@@ -6,64 +6,11 @@ The test_* is the syntax for pytest
 '''
 
 import pytest
-from PageManager import PageManager
-from Item import Item
-from StorageManager import StorageManager
-import StorageNode
-from Sorter import SortMetric, Sorter
+from datetime import datetime, timedelta, timezone
 
-# PageManager Tests
-def test_AddItem():
-    sM = StorageManager()
-    pM = PageManager(sM)
-    file = StorageNode.File()
-    item = Item("Test Item")
-    
-    pM.AddItem(file, item)
-
-def test_DeleteItem():
-    sM = StorageManager()
-    pM = PageManager(sM)
-    file = StorageNode.File()
-    item = Item("Test Item")
-    position = 0    # Note: This is a simulation. In the real world, the frontend will provide the correct position of the item to be deleted.
-    
-    pM.AddItem(file, item)
-    pM.DeleteItem(file, item, position)
-
-def test_EditItem():
-    sM = StorageManager()
-    pM = PageManager(sM)
-    file = StorageNode.File()
-    item = Item("Test Item")
-    newStr = "Edited Item"
-    
-    pM.AddItem(file, item)
-    pM.EditItem(file, item, newStr)
-
-def test_CreatePage():
-    sM = StorageManager()
-    pM = PageManager(sM)
-    file = StorageNode.File()
-    folder = StorageNode.Folder()
-    
-    pM.CreatePage(file, folder)
-    assert file in folder.children
-
-## Edge Cases
-
-def test_Delete_nonexistent_item():
-    sM = StorageManager()
-    pM = PageManager(sM)
-    file = StorageNode.File()
-    item = Item("Nonexistent Item")
-    position = 0
-    
-    pM.DeleteItem(file, item, position)
-    
-    assert item not in file.ItemList
-
-
+from FolderStructure_User.Manager.StorageManager import StorageManager
+from FolderStructure_User.Resource import StorageNode
+from FolderStructure_User.Transformer.Sorter import SortMetric, Sorter
 
 # StorageManager Tests
 
@@ -118,16 +65,18 @@ def test_MoveFolder():
     assert folder1 not in sM.root.children
 
 def test_ToggleFavorite():
-    # Should be able to toggle a file's favorite status
+    # Should be able to toggle a file's favorite status (RQ4: just a flag, no
+    # relocation into a Favorites folder)
     sM = StorageManager()
     file = StorageNode.File()
     sM.Add(file, sM.root)
 
     sM.ToggleFavorite(file)
-    assert file in sM.favorites.children
+    assert file.getFavorite() is True
+    assert file in sM.root.children
 
     sM.ToggleFavorite(file)
-    assert file not in sM.favorites.children
+    assert file.getFavorite() is False
 
 def test_DuplicateFile():
     # Should be able to duplicate a file to a folder
@@ -259,7 +208,8 @@ def test_MoveFromOutputFolder():
     assert file in sM.root.children
 
 def test_MoveFromFavoritesFolder():
-    # Should not be able to move files from the Favorites folder
+    # Favorites is now a plain folder (RQ4) -- files move out of it freely,
+    # the same as Input/Output.
     sM = StorageManager()
     favorites_folder = sM.favorites
     file = StorageNode.File()
@@ -267,8 +217,8 @@ def test_MoveFromFavoritesFolder():
 
     sM.Move(file, sM.root)
 
-    assert file in favorites_folder.children
-    assert file not in sM.root.children
+    assert file not in favorites_folder.children
+    assert file in sM.root.children
 
 def test_AddFolderToInputFolder():
     # Should be able to add a folder to the Input folder
@@ -299,14 +249,15 @@ def test_AddFileToFavoritesFolder():
     assert file in favorites_folder.children
 
 def test_AddFolderToFavoritesFolder():
-    # Should not be able to add a folder to the Favorites folder
+    # Favorites is now a plain folder (RQ4/RQ5.5) -- folders can be added
+    # anywhere, including what used to be the file-only Favorites folder.
     sM = StorageManager()
     favorites_folder = sM.favorites
     folder = StorageNode.Folder()
     
     sM.Add(folder, favorites_folder)
     
-    assert folder not in favorites_folder.children
+    assert folder in favorites_folder.children
 
 def test_MoveFromRoot():
     # Should be able to move files from the root folder
@@ -325,28 +276,34 @@ def test_MoveFromRoot():
     assert file not in sM.root.children
 
 def test_DeleteProtectedFolders():
-    # Should not be able to delete the root, Favorites, Input, or Output folders
+    # Should not be able to delete the root, Favorites, Input, Output, or Trash folders
     sM = StorageManager()
     
     sM.Delete(sM.root)
     sM.Delete(sM.favorites)
     sM.Delete(sM.input)
     sM.Delete(sM.output)
+    sM.Delete(sM.trash)
 
     assert sM.root is not None
     assert sM.favorites is not None
     assert sM.input is not None
     assert sM.output is not None
+    assert sM.trash is not None
 
 
 def test_ToggleFavoriteToFolder():
-    # Should not be able to toggle a folder as favorite
+    # RQ4(f): folders can be favorited directly, just like files
     sM = StorageManager()
     folder = StorageNode.Folder()
     sM.Add(folder, sM.root)
 
     sM.ToggleFavorite(folder)
-    assert folder not in sM.favorites.children
+    assert folder.getFavorite() is True
+    assert folder in sM.root.children  # favoriting does not relocate it
+
+    sM.ToggleFavorite(folder)
+    assert folder.getFavorite() is False
 
 def test_DuplicateFileToFavorites():
     # Should be able to duplicate a file to the Favorites folder
@@ -389,13 +346,9 @@ def test_MoveFileFromInputFolder():
 
 def test_FileGettersAndSetters():
     file = StorageNode.File()
-    file.setEntryType(StorageNode.EntryType.W)
-    file.setEntryNum(3)
     file.setData("Some journal entry text")
     file.setFavorite(True)
 
-    assert file.getEntryType() == StorageNode.EntryType.W
-    assert file.getEntryNum() == 3
     assert file.getData() == "Some journal entry text"
     assert file.getFavorite() == True
 
@@ -414,8 +367,6 @@ def test_FileDeepCopy():
     file = StorageNode.File()
     file.setName("Original")
     file.setData("Some data")
-    file.setEntryType(StorageNode.EntryType.D)
-    file.setEntryNum(1)
     file.setFavorite(True)
 
     duplicate = file.deepCopy()
@@ -423,8 +374,6 @@ def test_FileDeepCopy():
     assert duplicate is not file
     assert duplicate.getName() == file.getName()
     assert duplicate.getData() == file.getData()
-    assert duplicate.getEntryType() == file.getEntryType()
-    assert duplicate.getEntryNum() == file.getEntryNum()
     assert duplicate.getFavorite() == file.getFavorite()
 
 ## Edge Cases
@@ -440,15 +389,6 @@ def test_StorageNodeBaseClassRaises():
     with pytest.raises(BaseException):
         node.delete()
 
-def test_FileDeepCopy_DoesNotCopyItemList():
-    # Documents current behavior: deepCopy does not carry over the file's ItemList
-    file = StorageNode.File()
-    file.ItemList.append(Item("Some Item"))
-
-    duplicate = file.deepCopy()
-
-    assert len(duplicate.ItemList) == 0
-
 def test_FolderRemove_NonexistentNode():
     folder = StorageNode.Folder()
     file = StorageNode.File()  # never added to folder
@@ -456,29 +396,31 @@ def test_FolderRemove_NonexistentNode():
     with pytest.raises(ValueError):
         folder.Remove(file)
 
-# Item
+def test_FileUniqueIDIsGeneratedAndUnique():
+    # Each File should get its own non-empty uniqueID on creation, distinct
+    # from any other File's, since names are only unique within a folder.
+    file1 = StorageNode.File()
+    file2 = StorageNode.File()
 
-def test_ItemGettersAndSetters():
-    item = Item("Initial Content")
-    item.set_content("Updated Content")
-    item.set_position(2)
-    item.set_id(42)
-    item.set_timestamp(1234.5)
+    assert file1.getFileUniqueID()
+    assert file2.getFileUniqueID()
+    assert file1.getFileUniqueID() != file2.getFileUniqueID()
 
-    assert item.get_content() == "Updated Content"
-    assert item.get_position() == 2
-    assert item.get_id() == 42
-    assert item.get_timestamp() == 1234.5
+def test_FolderUniqueIDIsGeneratedAndUnique():
+    folder1 = StorageNode.Folder()
+    folder2 = StorageNode.Folder()
 
-## Edge Cases
+    assert folder1.getFolderUniqueID()
+    assert folder2.getFolderUniqueID()
+    assert folder1.getFolderUniqueID() != folder2.getFolderUniqueID()
 
-def test_Item_DefaultValues():
-    # A newly created Item should have no position, id, or timestamp assigned yet
-    item = Item("Some Content")
+def test_FileDeepCopy_GetsItsOwnUniqueID():
+    # A duplicate is a distinct file, so it must not share the original's uniqueID
+    file = StorageNode.File()
 
-    assert item.get_position() is None
-    assert item.get_id() is None
-    assert item.get_timestamp() is None
+    duplicate = file.deepCopy()
+
+    assert duplicate.getFileUniqueID() != file.getFileUniqueID()
 
 # Sorter
 
@@ -561,3 +503,175 @@ def test_SortByMetric_FoldersDoNotCrashOnFileOnlyMetrics():
 
     assert date_result[-1] == file
     assert favorite_result[-1] == file
+
+def test_SortByMetric_DateModified_SortsFoldersByDateCreated():
+    # RQ3: folders have no "modified" concept, so the DateModified metric
+    # sorts them by their own date_created instead.
+    sorter = Sorter()
+    folder_old = StorageNode.Folder()
+    folder_old.setDateCreated("2024-01-01")
+    folder_new = StorageNode.Folder()
+    folder_new.setDateCreated("2024-06-01")
+
+    result = sorter.SortByMetric([folder_new, folder_old], SortMetric.DateModified)
+
+    assert result == [folder_old, folder_new]
+
+def test_SortByMetric_Favorite_SortsFavoritedFoldersFirst():
+    # RQ4(f): folders can be favorited too, so the Favorite metric should
+    # order them the same way it orders files.
+    sorter = Sorter()
+    fav_folder = StorageNode.Folder()
+    fav_folder.setFavorite(True)
+    normal_folder = StorageNode.Folder()
+
+    result = sorter.SortByMetric([normal_folder, fav_folder], SortMetric.Favorite)
+
+    assert result == [fav_folder, normal_folder]
+
+# Unique naming (RQ5)
+
+def test_Add_RaisesOnDuplicateName():
+    sM = StorageManager()
+    folder = StorageNode.Folder()
+    sM.Add(folder, sM.root)
+    existing = StorageNode.File()
+    existing.setName("report")
+    sM.Add(existing, folder)
+
+    duplicate = StorageNode.File()
+    duplicate.setName("report")
+    with pytest.raises(ValueError):
+        sM.Add(duplicate, folder)
+
+def test_Add_AllowsBlankNamedNodesToCoexist():
+    # A blank/unset name isn't a "name" yet, so it's exempt from the
+    # uniqueness check -- only CreateFile/CreateFolder's real names (and any
+    # explicitly-set name) are enforced.
+    sM = StorageManager()
+    file1 = StorageNode.File()
+    file2 = StorageNode.File()
+
+    sM.Add(file1, sM.root)
+    sM.Add(file2, sM.root)  # should not raise
+
+    assert file1 in sM.root.children
+    assert file2 in sM.root.children
+
+def test_Rename_RaisesOnDuplicateName():
+    sM = StorageManager()
+    folder = StorageNode.Folder()
+    sM.Add(folder, sM.root)
+    file1 = StorageNode.File()
+    file1.setName("one")
+    file2 = StorageNode.File()
+    file2.setName("two")
+    sM.Add(file1, folder)
+    sM.Add(file2, folder)
+
+    with pytest.raises(ValueError):
+        sM.Rename(file2, "one")
+
+# Creating files/folders (RQ5)
+
+def test_CreateFile_AutoAssignsUntitledName():
+    sM = StorageManager()
+    file = sM.CreateFile(sM.root)
+
+    assert file.getName() == "untitled(1)"
+    assert file in sM.root.children
+    assert file.getCreationTime() is not None
+
+def test_CreateFile_IncrementsUntitledNumber():
+    sM = StorageManager()
+    first = sM.CreateFile(sM.root)
+    second = sM.CreateFile(sM.root)
+
+    assert first.getName() == "untitled(1)"
+    assert second.getName() == "untitled(2)"
+
+def test_CreateFile_WithExplicitName():
+    sM = StorageManager()
+    file = sM.CreateFile(sM.root, "notes")
+
+    assert file.getName() == "notes"
+
+def test_CreateFolder_SetsDateCreated():
+    sM = StorageManager()
+    folder = sM.CreateFolder(sM.root, "Subject")
+
+    assert folder.getName() == "Subject"
+    assert folder in sM.root.children
+    assert folder.getDateCreated()
+
+# Trash + grace period (RQ6/RQ13)
+
+def test_Delete_SoftDeletesIntoTrash():
+    sM = StorageManager()
+    file = StorageNode.File()
+    sM.Add(file, sM.root)
+
+    sM.Delete(file)
+
+    assert file not in sM.root.children
+    assert file in sM.trash.children
+    assert file.getDeletedAt() is not None
+
+def test_Delete_SoftDeletesFolderAndItsChildrenTogether():
+    sM = StorageManager()
+    folder = StorageNode.Folder()
+    sM.Add(folder, sM.root)
+    file = StorageNode.File()
+    sM.Add(file, folder)
+
+    sM.Delete(folder)
+
+    assert folder in sM.trash.children
+    assert file in folder.children  # the whole subtree moves as a unit
+
+def test_Delete_AlreadyInTrash_ErasesImmediately():
+    sM = StorageManager()
+    file = StorageNode.File()
+    sM.Add(file, sM.root)
+    sM.Delete(file)  # soft delete into Trash
+
+    sM.Delete(file)  # deleting it again from Trash erases it for real
+
+    assert file not in sM.trash.children
+
+def test_Move_RestoringFromTrash_ClearsDeletedAt():
+    sM = StorageManager()
+    file = StorageNode.File()
+    sM.Add(file, sM.root)
+    sM.Delete(file)
+    assert file.getDeletedAt() is not None
+
+    sM.Move(file, sM.root)
+
+    assert file in sM.root.children
+    assert file not in sM.trash.children
+    assert file.getDeletedAt() is None
+
+def test_PurgeExpiredTrash_RemovesEntriesPastGracePeriod():
+    sM = StorageManager()
+    file = StorageNode.File()
+    sM.Add(file, sM.root)
+    sM.Delete(file)
+
+    future = datetime.now(timezone.utc) + timedelta(days=31)
+    purged = sM.PurgeExpiredTrash(now=future)
+
+    assert purged == [file]
+    assert file not in sM.trash.children
+
+def test_PurgeExpiredTrash_KeepsEntriesWithinGracePeriod():
+    sM = StorageManager()
+    file = StorageNode.File()
+    sM.Add(file, sM.root)
+    sM.Delete(file)
+
+    soon = datetime.now(timezone.utc) + timedelta(days=1)
+    purged = sM.PurgeExpiredTrash(now=soon)
+
+    assert purged == []
+    assert file in sM.trash.children

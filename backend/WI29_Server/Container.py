@@ -8,14 +8,17 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
+from Security.application.EncryptionManager import EncryptionManager
+from Security.infrastructure.AesGcmCypher import AesGcmCypher
+from Security.infrastructure.InMemoryResetConfirmations import InMemoryResetConfirmations
+from Security.infrastructure.KeyRecordDatabaseAdapter import KeyRecordDatabaseAdapter
 from UserLogin.application.UserManager import UserManager
 from UserLogin.infrastructure.ScryptPasswordHasher import ScryptPasswordHasher
 from UserLogin.infrastructure.UserDatabaseAdapter import UserDatabaseAdapter
 from WI29_Server.application.AuthService import AuthService
 from WI29_Server.application.FileService import FileService
-from WI29_Server.application.GoogleSignIn import STATE_SECONDS, GoogleSignIn
-from WI29_Server.infrastructure.GoogleIdentityProvider import GoogleIdentityProvider
-from WI29_Server.infrastructure.MemoryStores import InMemoryPendingLogins, InMemorySessionStore, SlidingWindowLimiter
+from WI29_Server.application.KeyService import KeyService
+from WI29_Server.infrastructure.MemoryStores import InMemorySessionStore, SlidingWindowLimiter
 from WI29_Server.infrastructure.MongoContentStore import MongoContentStore
 from WI29_Server.infrastructure.PostgresFileRepositories import PostgresFileIndex, PostgresFolderRepository
 from WI29_Server.infrastructure.Settings import Settings
@@ -26,7 +29,7 @@ class Container:
     settings: Settings
     auth: AuthService
     files: FileService
-    google: GoogleSignIn
+    keys: KeyService
 
     # The databases may still be starting when the server starts, so this retries. The web server stays up meanwhile.
     def seedAdmin(self, attempts: int = 30, delaySeconds: float = 2):
@@ -47,10 +50,16 @@ def buildContainer(settings: Optional[Settings] = None) -> Container:
     s = settings or Settings.fromEnv()
 
     userManager = UserManager(UserDatabaseAdapter(s.conninfo("user_db")), ScryptPasswordHasher())
+    # EncryptionManager (Security's facade) is the SymmetricKeyVault port's real implementation -- it is
+    # passed in directly (structural typing) rather than through a WI29_Server-specific adapter class.
+    vault = EncryptionManager(
+        KeyRecordDatabaseAdapter(s.conninfo("keyrecord_db")), AesGcmCypher(), InMemoryResetConfirmations(),
+    )
     files = FileService(
         PostgresFolderRepository(s.conninfo("indexDB")),
         PostgresFileIndex(s.conninfo("indexDB")),
         MongoContentStore(s.mongoUri, s.mongoDatabase),
+        vault=vault,
     )
     auth = AuthService(
         userManager,
@@ -59,9 +68,5 @@ def buildContainer(settings: Optional[Settings] = None) -> Container:
         SlidingWindowLimiter(s.registerMaxPerWindow, s.limitWindowSeconds),
         onSignedIn=files.ensureDefaultFolders,  # everyone who signs in has their default folders
     )
-    google = GoogleSignIn(
-        GoogleIdentityProvider(s.googleClientId, s.googleClientSecret, s.googleDiscoveryUrl),
-        InMemoryPendingLogins(STATE_SECONDS),
-        s.googleRedirectUri,
-    )
-    return Container(s, auth, files, google)
+    keys = KeyService(userManager, vault)
+    return Container(s, auth, files, keys)

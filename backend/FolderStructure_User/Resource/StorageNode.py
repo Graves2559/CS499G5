@@ -4,22 +4,16 @@ StorageNode.py
 
 '''
 from __future__ import annotations  # for Folder instance within StorageNode
-import re
-import config
-from Item import Item
-from enum import Enum
+import uuid
 
+from FolderStructure_User import config
 
-class EntryType(Enum):
-    D = 1  # Page
-    W = 2  # Chapter
-    M = 3  # Volume
-    Y = 4  # Series
 
 class StorageNode:
     def __init__(self):
         self.name = ""
         self.parent: Folder = None
+        self.deletedAt = None  # ISO-8601 timestamp once soft-deleted into Trash; see setDeletedAt below
     
     def getName(self):
         print(f"\nGetting name: {self.name}")
@@ -43,6 +37,20 @@ class StorageNode:
         print(f"\nGetting parent: {self.parent}")
         return self.parent
 
+    def getDeletedAt(self):
+        print(f"\nGetting deleted at: {self.deletedAt}")
+        return self.deletedAt
+
+    # Set by StorageManager.Delete when this node is soft-deleted into Trash
+    # (an ISO-8601 timestamp); None otherwise. StorageManager.PurgeExpiredTrash
+    # compares this against the grace period to decide when to erase it for
+    # real, and StorageManager.Move clears it back to None if the node is
+    # moved out of Trash (i.e. restored) before that happens.
+    def setDeletedAt(self, deletedAt):
+        if (config.TEST_MODE): print(f"\nSetting deleted at: {deletedAt}")
+        self.deletedAt = deletedAt
+        if (config.TEST_MODE): print(f"Deleted at set to: {self.deletedAt}")
+
     # Without this, printing a node (e.g. in the many config.TEST_MODE debug
     # prints throughout StorageManager.py) falls back to Python's default
     # <StorageNode.File object at 0x...> -- showing the class name, but
@@ -57,9 +65,8 @@ class StorageNode:
             node = node.parent
         return path
 
-    # To identify a generic StorageNode (i.e. a Folder), its name (here, the
-    # full path of names) is enough. File overrides this below, since a file
-    # is identified by its name, entryType, AND entryNum together.
+    # To identify a generic StorageNode (i.e. a Folder or File), its name
+    # (here, the full path of names) is enough.
     def __repr__(self):
         return f"{type(self).__name__}('{self._path()}')"
 
@@ -67,20 +74,34 @@ class StorageNode:
 class File(StorageNode):
     def __init__(self):
         super().__init__()
-        self.entryType: EntryType = None
-        self.entryNum: int = 0
         self.data: str = ""
         self.isFavorite: bool = False
-        self.ItemList: list[Item] = []
         self.date_modified: str = ""  # Added date_modified attribute for sorting by date modified
         # DB round-tripping fields -- every File (encrypted or not) is now
-        # persisted as soon as it's created (see e2e.create_page), so these
-        # live on the base class rather than only on Security/EncryptedFile.py's
-        # EncryptedFile subclass. None/empty until actually persisted.
-        self.entryID = None            # DB primary key (a natural "<folder path>/<name>" key, not a surrogate one)
+        # persisted as soon as it's created, so these live on the base class.
+        # None/empty until actually persisted.
+        self.entryID = None            # Name of the file 
+
         self.username = ""              # Owning user; required for JournalEntryDatabaseAdapter.get/delete lookups
-        self.parentFolderID = None     # FK to storage_folders(folder_id); which folder this entry is filed under
+        self.parentFolderID = None     # name of the parent folder
+        self.parentFolderUniqueID = None  # unique ID of the parent folder
+
         self.creationTime = None       # DB row's created_at, once persisted
+
+        # Generated once per file (not derived from its name/entryID, which
+        # are only unique within a single folder) so it stays a stable,
+        # globally-unique reference -- this is what child/related records
+        # point back to via parentFolderUniqueID-style fields.
+        self.fileUniqueID: str = str(uuid.uuid4())
+
+    def getFileUniqueID(self) -> str:
+        print(f"\nGetting file unique ID: {self.fileUniqueID}")
+        return self.fileUniqueID
+
+    def setFileUniqueID(self, fileUniqueID: str):
+        if (config.TEST_MODE): print(f"\nSetting file unique ID: {fileUniqueID}")
+        self.fileUniqueID = fileUniqueID
+        if (config.TEST_MODE): print(f"File unique ID set to: {self.fileUniqueID}")
 
     def getEntryID(self):
         print(f"\nGetting entry ID: {self.entryID}")
@@ -104,10 +125,19 @@ class File(StorageNode):
         print(f"\nGetting parent folder ID: {self.parentFolderID}")
         return self.parentFolderID
 
+    def getParentFolderUniqueID(self):
+        print(f"\nGetting parent folder unique ID: {self.parentFolderUniqueID}")
+        return self.parentFolderUniqueID
+
     def setParentFolderID(self, parentFolderID):
         if (config.TEST_MODE): print(f"\nSetting parent folder ID: {parentFolderID}")
         self.parentFolderID = parentFolderID
         if (config.TEST_MODE): print(f"Parent folder ID set to: {self.parentFolderID}")
+
+    def setParentFolderUniqueID(self, parentFolderUniqueID):
+        if (config.TEST_MODE): print(f"\nSetting parent folder unique ID: {parentFolderUniqueID}")
+        self.parentFolderUniqueID = parentFolderUniqueID
+        if (config.TEST_MODE): print(f"Parent folder unique ID set to: {self.parentFolderUniqueID}")
 
     def getCreationTime(self):
         print(f"\nGetting creation time: {self.creationTime}")
@@ -117,20 +147,6 @@ class File(StorageNode):
         if (config.TEST_MODE): print(f"\nSetting creation time: {creationTime}")
         self.creationTime = creationTime
         if (config.TEST_MODE): print(f"Creation time set to: {self.creationTime}")
-
-    # A file is identified by its name, entryType, and entryNum together
-    # (unlike a generic StorageNode/Folder, which is identified by name alone).
-    def __repr__(self):
-        entryTypeName = self.entryType.name if self.entryType is not None else None
-        return f"{type(self).__name__}('{self._path()}', entryType={entryTypeName}, entryNum={self.entryNum})"
-
-    def getEntryType(self)->EntryType: 
-        print(f"\nGetting entry type: {self.entryType}")
-        return self.entryType
-
-    def getEntryNum(self)->int: 
-        print(f"\nGetting entry num: {self.entryNum}")
-        return self.entryNum
 
     def getData(self)->str: 
         print(f"\nGetting data: {self.data}")
@@ -148,16 +164,6 @@ class File(StorageNode):
         if (config.TEST_MODE): print(f"\nSetting file name: {fileName}")
         self.name = fileName
         if (config.TEST_MODE): print(f"File name set to: {self.name}")
-
-    def setEntryType(self, entryType: EntryType): 
-        if (config.TEST_MODE): print(f"\nSetting entry type: {entryType}")
-        self.entryType = entryType
-        if (config.TEST_MODE): print(f"Entry type set to: {self.entryType}")
-
-    def setEntryNum(self, entryNum: int): 
-        if (config.TEST_MODE): print(f"\nSetting entry num: {entryNum}")
-        self.entryNum = entryNum
-        if (config.TEST_MODE): print(f"Entry num set to: {self.entryNum}")
 
     def setData(self, data: str): 
         if (config.TEST_MODE): print(f"\nSetting data: {data}")
@@ -178,56 +184,19 @@ class File(StorageNode):
         duplicate = File()
         duplicate.setName(self.getName())
         duplicate.setData(self.getData())
-        duplicate.setEntryType(self.getEntryType())
-        duplicate.setEntryNum(self.getEntryNum())
         duplicate.setFavorite(self.getFavorite())
         duplicate.setDateModified(self.getDateModified())
         return duplicate
 
     def displayContents(self):
         print(f"\nDisplaying contents of file: {self.getName()}")
-        return self.entryType, self.entryNum, self.data, self.isFavorite, self.ItemList, self.date_modified
-
-    # Marks each item's own content with its id, one item per line --
-    # "(id): content". A file's data is the concatenation of all its items'
-    # contents this way, so the file can be encrypted/stored as a single
-    # blob while individual item content/position stay recoverable on
-    # decrypt (see populateItemContentFromData). Assumes item content has
-    # no embedded newlines -- multi-line item content is not supported by
-    # this line-based format.
-    _ITEM_LINE_PATTERN = re.compile(r"^\((-?\d+)\): (.*)$")
-
-    # Recomputes self.position for every item (matching its actual index in
-    # ItemList) and self.data as the join of every item's marked content.
-    # Call this any time ItemList changes (add/edit/delete item) -- once a
-    # file has items, its data is DERIVED from them, not independently set.
-    def syncDataFromItems(self):
-        for idx, item in enumerate(self.ItemList):
-            item.set_position(idx)
-        self.data = "\n".join(f"({item.get_id()}): {item.get_content()}" for item in self.ItemList)
-
-    # The inverse of syncDataFromItems: fills in each existing ItemList
-    # entry's .content by parsing self.data's "(id): content" markers,
-    # matched by id. Used after decryption, where self.data holds the
-    # decrypted marked text and self.ItemList already holds the matching
-    # metadata (id/position/timestamp -- persisted separately, unencrypted;
-    # see EncryptedFile.ItemList/Database.py) but not yet any content.
-    def populateItemContentFromData(self):
-        contentByID = {}
-        for line in self.data.split("\n"):
-            match = File._ITEM_LINE_PATTERN.match(line)
-            if match:
-                contentByID[int(match.group(1))] = match.group(2)
-        for item in self.ItemList:
-            if item.get_id() in contentByID:
-                item.set_content(contentByID[item.get_id()])
+        return self.data, self.isFavorite, self.date_modified
 
     # StorageManager.Delete already removes this file from its parent's
     # children and clears its own .parent before calling this -- mirrors
     # Folder.delete()'s "clear what this node itself still owns" cleanup.
     def delete(self):
         if (config.TEST_MODE): print(f"\nDeleting file {self.name}")
-        self.ItemList.clear()
         if (config.TEST_MODE): print(f"File {self.name} deleted")
 
 class Folder(StorageNode):
@@ -235,11 +204,43 @@ class Folder(StorageNode):
         super().__init__()
         self.children: list[StorageNode] = []
         self.isLocked = isLocked
-        # DB round-tripping fields only (mirrors EncryptedFile.entryID/username
-        # in Security/EncryptedFile.py) -- unused/None for in-memory-only
-        # folders, set by StorageFolderDatabaseAdapter once persisted.
+        # DB round-tripping fields only (mirrors File.entryID/username above)
+        # -- unused/None for in-memory-only folders, set by a DB adapter once
+        # persisted.
         self.folderID = None
         self.parentFolderID = None
+
+        # Generated once per folder, for the same reason as File.fileUniqueID
+        # above: a folder's name is only unique within its own parent, not
+        # globally, so children reference this as their parentFolderUniqueID.
+        self.folderUniqueID: str = str(uuid.uuid4())
+
+        # RQ4(f)/RQ4(c): folders can be favorited directly, independently of
+        # any files/subfolders inside them -- favoriting a folder does not
+        # cascade to its contents, nor relocate it anywhere.
+        self.isFavorite: bool = False
+        # RQ3: lets folders be sorted by creation date, the same way a
+        # File's date_modified sorts files -- folders have no "modified"
+        # concept here, only "created".
+        self.date_created: str = ""
+
+    def getFavorite(self) -> bool:
+        print(f"\nGetting favorite status: {self.isFavorite}")
+        return self.isFavorite
+
+    def setFavorite(self, isFavorite: bool):
+        if (config.TEST_MODE): print(f"\nSetting favorite status: {isFavorite}")
+        self.isFavorite = isFavorite
+        if (config.TEST_MODE): print(f"Favorite status set to: {self.isFavorite}")
+
+    def getDateCreated(self) -> str:
+        print(f"\nGetting date created: {self.date_created}")
+        return self.date_created
+
+    def setDateCreated(self, date_created: str):
+        if (config.TEST_MODE): print(f"\nSetting date created: {date_created}")
+        self.date_created = date_created
+        if (config.TEST_MODE): print(f"Date created set to: {self.date_created}")
 
     def getFolderID(self):
         print(f"\nGetting folder ID: {self.folderID}")
@@ -249,6 +250,15 @@ class Folder(StorageNode):
         if (config.TEST_MODE): print(f"\nSetting folder ID: {folderID}")
         self.folderID = folderID
         if (config.TEST_MODE): print(f"Folder ID set to: {self.folderID}")
+
+    def getFolderUniqueID(self) -> str:
+        print(f"\nGetting folder unique ID: {self.folderUniqueID}")
+        return self.folderUniqueID
+
+    def setFolderUniqueID(self, folderUniqueID: str):
+        if (config.TEST_MODE): print(f"\nSetting folder unique ID: {folderUniqueID}")
+        self.folderUniqueID = folderUniqueID
+        if (config.TEST_MODE): print(f"Folder unique ID set to: {self.folderUniqueID}")
 
     def getParentFolderID(self):
         print(f"\nGetting parent folder ID: {self.parentFolderID}")

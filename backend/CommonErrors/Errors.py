@@ -42,3 +42,9 @@ class UnsupportedMediaError(AppError):
 
 class ExternalServiceError(AppError):
     pass
+
+
+# Raised when decryption fails: wrong passphrase/recovery code, or tampered/corrupted ciphertext. The two
+# look identical from the outside (an AES-GCM tag mismatch), which is the point -- it never reveals which.
+class CorruptedDataError(AppError):
+    pass

@@ -3,8 +3,9 @@ Sorter.py
 
 '''
 from enum import Enum
-import config
-from StorageNode import StorageNode, File, Folder
+
+from FolderStructure_User import config
+from FolderStructure_User.Resource.StorageNode import StorageNode, File, Folder
 
 class SortMetric(Enum):
     Filename = 1    # foldername (name) or filename(date)
@@ -37,12 +38,14 @@ class Sorter():
             nodes.sort(key=lambda x: (not isinstance(x, Folder), x.getName()))
         elif self.metric == SortMetric.DateModified:
             # not isinstance(x, Folder) -> folders first
-            # x.getDateModified() if isinstance(x, File), else "" -> if x is a File, use file.getDateModified(), otherwise use empty string for sorting
-            nodes.sort(key=lambda x: (not isinstance(x, Folder), x.getDateModified() if isinstance(x, File) else ""))
+            # Files sort by date_modified; Folders have no "modified" concept
+            # here, so they sort by their own date_created instead (RQ3).
+            nodes.sort(key=lambda x: (not isinstance(x, Folder), x.getDateModified() if isinstance(x, File) else x.getDateCreated()))
         elif self.metric == SortMetric.Favorite:
             # not isinstance(x, Folder) -> folders first
-            # x.getFavorite() if isinstance(x, File), else False -> if x is a File, use file.getFavorite(), otherwise use False for sorting
-            nodes.sort(key=lambda x: (not isinstance(x, Folder), not x.getFavorite() if isinstance(x, File) else False))
+            # Both Files and Folders can be favorited (RQ4), so both use their
+            # own getFavorite() for the secondary sort key.
+            nodes.sort(key=lambda x: (not isinstance(x, Folder), not x.getFavorite()))
 
         print(f"Nodes sorted by metric: {self.metric}")
         return nodes

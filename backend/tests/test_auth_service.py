@@ -4,7 +4,6 @@ from CommonErrors.Errors import TooManyRequestsError, UnauthorizedError
 from Fakes import Clock, FakeHasher, FakeUsers
 from UserLogin.application.UserManager import UserManager
 from WI29_Server.application.AuthService import AuthService
-from WI29_Server.domain.Identity import ProviderProfile
 from WI29_Server.infrastructure.MemoryStores import InMemorySessionStore, SlidingWindowLimiter
 
 STRONG = "Str0ng#Pass"
@@ -93,11 +92,6 @@ def test_unknown_or_missing_token(auth):
     assert auth.username("nope") is None
 
 
-def test_login_with_google(auth):
-    token = auth.loginWithGoogle(ProviderProfile("g-1", "dana@example.com", True, "Dana"))
-    assert auth.username(token) == "Dana"
-
-
 def test_every_way_of_signing_in_runs_the_on_signed_in_hook(clock):
     seen = []
     svc = AuthService(
@@ -107,8 +101,7 @@ def test_every_way_of_signing_in_runs_the_on_signed_in_hook(clock):
     )
     svc.register("alice", "alice@example.com", STRONG)
     svc.login("alice", STRONG)
-    svc.loginWithGoogle(ProviderProfile("g-1", "dana@example.com", True, "Dana"))
-    assert seen == ["alice", "alice", "Dana"]
+    assert seen == ["alice", "alice"]
 
 
 def test_a_failed_login_does_not_run_the_hook(clock):

@@ -8,8 +8,8 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from CommonErrors.Errors import (
-    AppError, ConflictError, ExternalServiceError, NotFoundError, PayloadTooLargeError, TooManyRequestsError,
-    UnauthorizedError, UnsupportedMediaError, ValidationError,
+    AppError, ConflictError, CorruptedDataError, ExternalServiceError, NotFoundError, PayloadTooLargeError,
+    TooManyRequestsError, UnauthorizedError, UnsupportedMediaError, ValidationError,
 )
 
 STATUS_BY_ERROR = {
@@ -20,6 +20,7 @@ STATUS_BY_ERROR = {
     PayloadTooLargeError: 413,
     UnsupportedMediaError: 415,
     TooManyRequestsError: 429,
+    CorruptedDataError: 422,
     ExternalServiceError: 502,
 }
 

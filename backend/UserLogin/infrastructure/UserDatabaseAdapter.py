@@ -40,16 +40,15 @@ class UserDatabaseAdapter:
         if self._conn is not None and not self._conn.closed:
             self._conn.close()
 
-    # googleID is set for accounts created through "Continue with Google" (they have no password).
-    def add(self, user: User, googleID: str = None):
+    def add(self, user: User):
         conn = self.connect()
         salt, passwordHash = user.getPasswordHash()
         stored = encodePasswordHash(salt, passwordHash) if user.hasPassword() else None
         try:
             with conn.transaction():
                 conn.execute(
-                    "INSERT INTO users (username, email, password_hash, encrypt_choice, google_id) VALUES (%s, %s, %s, %s, %s)",
-                    (user.getUsername(), user.getEmail(), stored, user.getEncryptChoice(), googleID),
+                    "INSERT INTO users (username, email, password_hash, encrypt_choice) VALUES (%s, %s, %s, %s)",
+                    (user.getUsername(), user.getEmail(), stored, user.getEncryptChoice()),
                 )
                 for question, qa in user.getSecurityQuestions().items():
                     conn.execute(
@@ -79,10 +78,6 @@ class UserDatabaseAdapter:
             user.setSecurityAnswerHash(question, bytes(salt), bytes(answerHash))
         return user
 
-    def findUsernameByGoogleID(self, googleID: str):
-        row = self.connect().execute("SELECT username FROM users WHERE google_id = %s", (googleID,)).fetchone()
-        return row[0] if row else None
-
     # Usernames and emails are unique ignoring case. Returns the stored username, or None.
     def findUsername(self, identifier: str):
         column = "email" if "@" in identifier else "username"
@@ -108,6 +103,17 @@ class UserDatabaseAdapter:
             "UPDATE users SET password_hash = %s WHERE username = %s",
             (encodePasswordHash(salt, passwordHash), user.getUsername()),
         )
+
+    # Replaces every security question/answer-hash this user has.
+    def replaceSecurityQuestions(self, username: str, questions: dict):
+        conn = self.connect()
+        with conn.transaction():
+            conn.execute("DELETE FROM security_questions WHERE username = %s", (username,))
+            for question, qa in questions.items():
+                conn.execute(
+                    "INSERT INTO security_questions (username, question, salt, answer_hash) VALUES (%s, %s, %s, %s)",
+                    (username, question, qa["salt"], qa["answerHash"]),
+                )
 
     def delete(self, username: str):
         self.connect().execute("DELETE FROM users WHERE username = %s", (username,))

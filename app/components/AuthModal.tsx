@@ -44,7 +44,5 @@ export default function AuthModal({ dialogRef, authMode, setAuthMode, authNotice
       </form>
       <p className="auth-notice" role="status">{authNotice}</p>
       <p className="auth-switch">{authMode === "signin" ? "Don't have an account? " : "Already have an account? "}<button onClick={() => { setAuthMode(authMode === "signin" ? "signup" : "signin"); setAuthNotice(""); setConfirm(""); }}>{authMode === "signin" ? "Sign up" : "Sign in"}</button></p>
-      <div className="auth-divider"><span>or</span></div>
-      <button className="google-signin" type="button" onClick={() => { window.location.href = "/api/auth/google/start"; }}><span aria-hidden="true" className="google-mark">G</span>Continue with Google</button>
     </dialog>);
 }

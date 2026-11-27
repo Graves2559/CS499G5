@@ -1,15 +1,16 @@
 '''
 AuthService.py
 
-Use cases for signing in: password login, registration, Google login, and sessions.
+Use cases for signing in: password login, registration, and sessions.
 The accounts themselves come through the Accounts port (UserLogin's UserManager implements it); this adds sessions,
 abuse limits, and "what happens when someone signs in" on top.
+
+# RQ2 (Security/README.md): there is no Google sign-in. Every account logs in with its own password.
 '''
 from typing import Callable, Optional
 
 from CommonErrors.Errors import TooManyRequestsError, UnauthorizedError
-from WI29_Server.application.Ports import Accounts, AttemptLimiter, SessionStore
-from WI29_Server.domain.Identity import ProviderProfile
+from WI29_Server.application.Ports import Account, Accounts, AttemptLimiter, SessionStore
 
 
 class AuthService:
@@ -49,15 +50,19 @@ class AuthService:
         user = self.accounts.registerUser(username, email, password)
         return self._startSession(user.getUsername())
 
-    # Signs in (or creates) the account for a Google profile. Only verified emails are accepted upstream.
-    def loginWithGoogle(self, profile: ProviderProfile) -> str:
-        return self._startSession(self.accounts.signInWithGoogle(profile.subject, profile.email, profile.name))
-
     def username(self, token: Optional[str]) -> Optional[str]:
         return self.sessions.username(token)
 
     def logout(self, token: Optional[str]):
         self.sessions.delete(token)
+
+    # Profile information for the signed-in user (e.g. the encryption preference). The password is never
+    # exposed, and the symmetric-key passphrase is never stored here or anywhere server-side.
+    def getUser(self, username: str) -> Optional[Account]:
+        return self.accounts.getUser(username)
+
+    def setEncryptChoice(self, user: Account, encryptChoice: bool):
+        self.accounts.setEncryptChoice(user, encryptChoice)
 
     def _startSession(self, username: str) -> str:
         if self.onSignedIn:

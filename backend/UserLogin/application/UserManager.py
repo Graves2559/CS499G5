@@ -1,17 +1,15 @@
 '''
 UserManager.py
 
-Use cases for user accounts: register, authenticate, edit, remove, and sign in with Google.
+Use cases for user accounts: register, authenticate, edit, and remove. There is no Google sign-in (Security
+README RQ2): every account signs in with its own username/email and password.
 Depends only on the domain and on the ports in Ports.py.
 '''
-import secrets
 from typing import Optional
 
 from CommonErrors.Errors import ConflictError, UnauthorizedError, ValidationError
 from UserLogin.application.Ports import PasswordHasher, UserRepository
-from UserLogin.domain.Policies import (
-    requireStrongPassword, requireValidEmail, requireValidUsername, usernameBase,
-)
+from UserLogin.domain.Policies import requireStrongPassword, requireValidEmail, requireValidUsername
 from UserLogin.domain.User import User
 
 # RQ: The username cannot change after registration.
@@ -83,29 +81,54 @@ class UserManager:
         self.users.update(user.getUsername(), email=newEmail)
         user.setEmail(newEmail)
 
+    # Starts binding `email` to the account. Returns the verification code, which the caller must send to that
+    # address and never show to the requester.
+    def requestEmailVerification(self, user: User, email: str) -> str:
+        requireValidEmail(email)
+        found = self.users.findUsername(email)
+        if found is not None and found.lower() != user.getUsername().lower():
+            raise ConflictError("That email is already in use.")
+        return user.requestEmailVerification(email)
+
+    # Binds the pending email only when the code is correct; otherwise raises ValidationError.
+    def verifyEmail(self, user: User, code: str):
+        previous = user.getEmail()
+        email = user.verifyEmail(code)
+        try:
+            self.users.update(user.getUsername(), email=email)
+        except ConflictError:
+            user.setEmail(previous)
+            raise
+
     def setEncryptChoice(self, user: User, encryptChoice: bool):
         self.users.update(user.getUsername(), encryptChoice=encryptChoice)
         user.setEncryptChoice(encryptChoice)
+
+    # RQ5/RQ8/RQ9: sets up (or replaces) the user's security-question answers, gating the half-hold removal
+    # and (Case 1 of) resetting the symmetric key. Answers are hashed (never stored in the clear); the same
+    # question text answered the same way always verifies, regardless of case/whitespace.
+    def setupSecurityQuestions(self, user: User, questionAnswers: dict):
+        if not questionAnswers:
+            raise ValidationError("At least one security question is required.")
+        user.getSecurityQuestions().clear()
+        for question, answer in questionAnswers.items():
+            salt, answerHash = self.hasher.hash(_normalizeAnswer(answer))
+            user.setSecurityAnswerHash(question, salt, answerHash)
+        self.users.replaceSecurityQuestions(user.getUsername(), user.getSecurityQuestions())
+
+    # True if every configured question is answered correctly (constant-time compare per question). If the
+    # user never set up any security questions, this gate is simply not in effect (vacuously true).
+    def verifySecurityAnswers(self, user: User, candidateAnswers: dict) -> bool:
+        for question, record in user.getSecurityQuestions().items():
+            candidate = candidateAnswers.get(question)
+            if candidate is None or not self.hasher.verify(_normalizeAnswer(candidate), record["salt"], record["answerHash"]):
+                return False
+        return True
 
     # Profile information for the user. The password is never exposed.
     def getUser(self, username: str) -> Optional[User]:
         return self.users.get(username)
 
-    # Returns the username for a verified Google account, creating the account on first sign-in.
-    def signInWithGoogle(self, googleID: str, email: str, name: str) -> str:
-        username = self.users.findUsernameByGoogleID(googleID)
-        if username is not None:
-            return username
-        # Not linked automatically: sign-up does not verify emails yet, so linking by email could hand this
-        # Google user an account that someone else registered with their address and knows the password of.
-        if self.users.findUsername(email) is not None:
-            raise ConflictError("An account with this email already exists. Sign in with its password instead.")
-        username = self._freeUsername(usernameBase(name, email))
-        self.users.add(User(username, email), googleID=googleID)
-        return username
 
-    def _freeUsername(self, base: str) -> str:
-        candidate = base
-        while self.users.findUsername(candidate) is not None:
-            candidate = f"{base}{secrets.randbelow(10000):04d}"
-        return candidate
+def _normalizeAnswer(answer: str) -> str:
+    return answer.strip().lower()

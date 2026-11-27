@@ -19,6 +19,7 @@ from WI29_Server.Container import Container, buildContainer
 from WI29_Server.interface.AuthRoutes import buildAuthRouter
 from WI29_Server.interface.ErrorHandlers import registerErrorHandlers
 from WI29_Server.interface.FileRoutes import buildFileRouter
+from WI29_Server.interface.KeyRoutes import buildKeyRouter
 
 
 class HttpAPI(FastAPI):
@@ -49,8 +50,9 @@ class HttpAPI(FastAPI):
 
         # API routes here
         c = self.container
-        self.include_router(buildAuthRouter(c.auth, c.google, c.settings.sessionSeconds))
+        self.include_router(buildAuthRouter(c.auth, c.settings.sessionSeconds))
         self.include_router(buildFileRouter(c.auth, c.files))
+        self.include_router(buildKeyRouter(c.auth, c.keys, c.files))
 
         # Static files (frontend) binded to the root/public URL (provided by the Tunneling service)
         # CONNECTS "app" folder to the backend

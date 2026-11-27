@@ -5,4 +5,5 @@ fastapi
 python-multipart
 psycopg[binary]
 pymongo
-requests
+cryptography
+argon2-cffi

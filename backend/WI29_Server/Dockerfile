@@ -13,10 +13,12 @@ COPY backend/WI29_Server/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 
-# The backend is a set of packages under /app/backend: CommonErrors (shared errors), UserLogin (accounts) and
-# WI29_Server (files, sessions, HTTP). Each has domain / application / infrastructure layers.
+# The backend is a set of packages under /app/backend: CommonErrors (shared errors), UserLogin (accounts),
+# Security (encryption keys) and WI29_Server (files, sessions, HTTP). Each has domain / application /
+# infrastructure layers.
 COPY backend/CommonErrors ./backend/CommonErrors
 COPY backend/UserLogin ./backend/UserLogin
+COPY backend/Security ./backend/Security
 COPY backend/WI29_Server ./backend/WI29_Server
 COPY dist ./dist
 ENV PYTHONPATH=/app/backend

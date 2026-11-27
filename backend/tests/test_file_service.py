@@ -115,6 +115,51 @@ def test_failed_index_write_removes_the_new_content_and_keeps_the_old(service, p
     assert len(content.blobs) == 1
 
 
+def test_put_file_checks_run_in_order_size_then_type_then_name_then_parent(service):
+    with pytest.raises(PayloadTooLargeError):
+        service.putFile(ALICE, "o1", "input", "a/b", "", b"MZ\x00" + b"a" * MAX_FILE_BYTES)
+    with pytest.raises(UnsupportedMediaError):
+        service.putFile(ALICE, "o1", "input", "a/b", "", b"\xff\xfe")
+    with pytest.raises(ValidationError):
+        service.putFile(ALICE, "o1", "nope", "a/b", "", b"x")
+    with pytest.raises(ValidationError):
+        service.putFile(ALICE, "bad id", "input", "a.txt", "", b"x")
+
+
+def test_put_file_into_a_parent_that_is_a_file_is_rejected(service, parts):
+    _, _, content = parts
+    service.putFile(ALICE, "f1", "input", "f.txt", "", b"x")
+    with pytest.raises(NotFoundError):
+        service.putFile(ALICE, "f2", "f1", "g.txt", "", b"y")
+    assert len(content.blobs) == 1
+
+
+def test_put_file_removes_the_new_content_when_the_index_reports_a_name_conflict(service, parts):
+    _, files, content = parts
+    files.failUpsertWith = ConflictError("race")
+    with pytest.raises(ConflictError):
+        service.putFile(ALICE, "t1", "input", "a.txt", "", b"x")
+    assert content.blobs == {}
+
+
+def test_replacing_succeeds_even_if_the_old_content_cannot_be_deleted(service, parts):
+    _, _, content = parts
+    service.putFile(ALICE, "t1", "input", "a.txt", "", b"first")
+    realDelete = content.delete
+
+    def deleteFails(mediaId):
+        raise OSError("disk error")
+    content.delete = deleteFails
+    assert service.putFile(ALICE, "t1", "input", "a.txt", "", b"second") == (6, "text/plain")
+    content.delete = realDelete
+    assert service.getContent(ALICE, "t1")[0] == b"second"
+
+
+def test_put_file_keeps_only_the_first_300_characters_of_the_description(service):
+    service.putFile(ALICE, "d1", "input", "d.txt", "x" * 500, b"x")
+    assert len([e for e in service.listEntries(ALICE) if e.id == "d1"][0].description) == 300
+
+
 def test_rename_updates_date_modified_but_favorite_does_not(service, parts):
     _, files, _ = parts
     service.putFile(ALICE, "t1", "input", "a.txt", "", b"x")

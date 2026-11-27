@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 BACKEND = Path(__file__).resolve().parent.parent
-CONTEXTS = ("UserLogin", "WI29_Server")
+CONTEXTS = ("UserLogin", "WI29_Server", "Security")
 LAYERS = ("domain", "application", "infrastructure", "interface")
 OUTER = {"infrastructure", "interface"}
 THIRD_PARTY = {"fastapi", "starlette", "pydantic", "uvicorn", "psycopg", "pymongo", "gridfs", "bson", "requests",
@@ -74,12 +74,17 @@ def test_user_login_does_not_depend_on_the_web_server():
                 assert module.split(".")[0] != "WI29_Server", f"{path.name} imports {module}"
 
 
-# Another bounded context is reached through a port (e.g. Accounts), never by importing its classes.
-@pytest.mark.parametrize("layer", ["domain", "application", "interface"])
-def test_web_server_core_does_not_import_the_user_login_context(layer):
-    for path in sorted((BACKEND / "WI29_Server" / layer).glob("*.py")):
-        for module in importsOf(path):
-            assert module.split(".")[0] != "UserLogin", f"{path.name} ({layer}) imports {module}"
+# Another bounded context is reached through a port (e.g. Accounts), never by importing its classes --
+# except from inside that context's own infrastructure layer, which is allowed to adapt a concrete class
+# from elsewhere into one of this context's ports (e.g. WI29_Server/infrastructure wrapping Security's
+# EncryptionManager), or from Container.py (the composition root), neither of which this checks.
+@pytest.mark.parametrize("context", CONTEXTS)
+def test_a_context_does_not_import_other_contexts_except_via_its_infrastructure(context):
+    others = set(CONTEXTS) - {context}
+    for layer in ("domain", "application", "interface"):
+        for path in sorted((BACKEND / context / layer).glob("*.py")):
+            for module in importsOf(path):
+                assert module.split(".")[0] not in others, f"{path.name} ({context}/{layer}) imports {module}"
 
 
 IO_MODULES = {"os", "sys", "socket", "subprocess", "pathlib", "time", "threading", "shutil", "sqlite3", "http", "urllib"}

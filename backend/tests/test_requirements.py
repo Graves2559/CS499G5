@@ -103,6 +103,17 @@ def test_req02_a_file_over_the_size_limit_is_rejected(app):
     assert app.content.blobs == {}
 
 
+def test_req02_a_file_of_exactly_the_size_limit_is_accepted(app):
+    content = b"a" * MAX_FILE_BYTES
+    assert upload(app, ALICE, "edge", "edge.txt", content) == (MAX_FILE_BYTES, "text/plain")
+    assert app.service.getContent(ALICE, "edge")[0] == content
+
+
+def test_req02_an_empty_file_is_accepted_as_an_empty_text_file(app):
+    assert upload(app, ALICE, "empty", "empty.txt", b"") == (0, "text/plain")
+    assert app.service.getContent(ALICE, "empty")[0] == b""
+
+
 def test_req02_a_failed_upload_leaves_earlier_documents_untouched(app):
     upload(app, ALICE, "ok1", "ok.png", PNG)
     with pytest.raises(UnsupportedMediaError):

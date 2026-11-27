@@ -2,16 +2,17 @@
 Ports.py
 
 The interfaces the use cases depend on. The infrastructure layer implements them (Postgres, MongoDB, in-memory
-stores, Google); the application layer never imports an implementation. Tests use small in-memory fakes.
+stores); the application layer never imports an implementation. Tests use small in-memory fakes.
 '''
-from typing import List, Optional, Protocol, Tuple
+from typing import Any, List, Optional, Protocol, Tuple
 
 from WI29_Server.domain.Files import FileEntry, Folder
-from WI29_Server.domain.Identity import ProviderProfile
 
 
 class Account(Protocol):
     def getUsername(self) -> str: ...
+
+    def getEncryptChoice(self) -> bool: ...
 
 
 class Accounts(Protocol):
@@ -26,7 +27,15 @@ class Accounts(Protocol):
 
     def authenticateUser(self, identifier: str, password: str) -> Optional[Account]: ...
 
-    def signInWithGoogle(self, googleID: str, email: str, name: str) -> str: ...
+    def getUser(self, username: str) -> Optional[Account]: ...
+
+    def setEncryptChoice(self, user: Account, encryptChoice: bool) -> None: ...
+
+    # RQ5/RQ8: sets up (or replaces) a user's security-question answers; verifies a set of candidate answers
+    # (vacuously true if the user has none configured).
+    def setupSecurityQuestions(self, user: Account, questionAnswers: dict) -> None: ...
+
+    def verifySecurityAnswers(self, user: Account, candidateAnswers: dict) -> bool: ...
 
 
 class FolderRepository(Protocol):
@@ -90,20 +99,27 @@ class AttemptLimiter(Protocol):
     def reset(self, key: str) -> None: ...
 
 
-class PendingLogins(Protocol):
-    def add(self, state: str, codeVerifier: str, redirectUri: str) -> bool:
-        '''Remembers a started sign-in. Returns False if too many are pending.'''
+class SymmetricKeyVault(Protocol):
+    '''What FileService/KeyService need from a user's zero-knowledge symmetric-key encryption (implemented
+    structurally by Security's EncryptionManager -- Security.application.KeyRecord.KeyRecord satisfies the
+    `Any` return types here, but this context never imports that class directly, only through this port).'''
 
-    def pop(self, state: str) -> Optional[Tuple[str, str]]:
-        '''Returns (codeVerifier, redirectUri) once, or None if unknown or expired.'''
+    # Returns (keyVersion, ciphertext); keyVersion must be stored alongside the ciphertext.
+    def encryptContent(self, username: str, symmetricKey: str, plaintext: bytes) -> Tuple[int, bytes]: ...
 
+    # Raises CommonErrors.Errors.CorruptedDataError on a wrong symmetricKey or tampered/corrupted ciphertext.
+    def decryptContent(self, username: str, symmetricKey: str, keyVersion: int, ciphertext: bytes) -> bytes: ...
 
-class IdentityProvider(Protocol):
-    @property
-    def configured(self) -> bool: ...
+    def rotateKey(self, username: str, symmetricKey: str) -> Any: ...
 
-    def authorizationUrl(self, redirectUri: str, state: str, codeChallenge: str) -> str:
-        '''Raises ExternalServiceError if the provider cannot be reached.'''
+    # RQ4: must be requested and confirmed before any of the 3 reset cases below.
+    def requestResetConfirmation(self, username: str) -> str: ...
 
-    def fetchProfile(self, code: str, redirectUri: str, codeVerifier: str) -> ProviderProfile:
-        '''Raises ExternalServiceError if the code cannot be exchanged.'''
+    def changePassphrase(self, username: str, confirmationCode: str, oldPassphrase: str, newPassphrase: str) -> Any: ...
+
+    def generateRecoveryCode(self, username: str, passphrase: str) -> str: ...
+
+    def recoverWithRecoveryCode(self, username: str, confirmationCode: str, recoveryCode: str, newPassphrase: str) -> Any: ...
+
+    # Caller must delete every one of this user's encrypted files BEFORE calling this.
+    def wipeAndReprovision(self, username: str, confirmationCode: str, newPassphrase: str) -> Tuple[Any, str]: ...

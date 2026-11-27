@@ -28,23 +28,6 @@ One `docker compose up --build` starts everything:
 - **Sorting and favorites** (Settings → Files): sort by Name, Date modified or Favorite, ascending or descending (folders always come first, as in `Sorter.py`). Use a file's ••• menu to add it to favorites; favorites show a ★ and are listed in the virtual **Favorites** folder. Only files can be favorites, and nothing can be created in Favorites. Editing a file's name or description updates its date modified; toggling a favorite does not.
 - Not connected yet: the "Image & video encryption" setting (files are stored unencrypted), and email verification and password reset.
 
-## Google Setup to use OAuth 
-
-The Login dialog's **Continue with Google** button uses Google's OAuth 2.0 sign-in. It needs your own Google credentials, so it reports "not set up" until you add them:
-
-1. In the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) create an **OAuth client ID** of type **Web application** (configure the OAuth consent screen first [PenAI, Redirect URL: http://localhost:8000/api/auth/google/callback]; then, go to Client and make the OAuth Client. Then, go to Audience and scroll below  "Testing" and add the Google accounts allowed to sign in as test users).
-2. Put the credentials in a `.env` file next to `docker-compose.yml` (never commit it; `.env` is git-ignored).
-   That is, (1) cp backend/Database/.env.example .env (2) open -e .env (3) and then put your clientID and credentials
-   ```
-   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-   GOOGLE_CLIENT_SECRET=your-client-secret
-   ```
-3. `docker compose up -d --build`, open http://localhost:8000 and use the button.
-
-Behaviour: the first Google sign-in creates an account (username from the Google first name, made unique if taken; no password, so it can only sign in with Google). A Google account whose email already belongs to a password account is refused, with a message to sign in with that password. Sign-up does not verify emails yet, so linking by email automatically would let someone who registered another person's email take over their Google sign-in. Only emails that Google reports as verified are accepted. Each attempt is bound to the browser that started it (`state` cookie) and uses PKCE.
-
-**Using it through the public Cloudflare tunnel:** Google only accepts redirect URIs you registered in advance, and the quick tunnel started by `main.py` gets a new random URL every time, so the sign-in only works on `http://localhost:8000` for now. For a public address, set up a Cloudflare *named* tunnel with a fixed hostname, register `https://your-hostname/api/auth/google/callback` in the Google console and set `GOOGLE_REDIRECT_URI` to that same URL in `.env`.
-
 ## Connecting to the databases
 
 | | Postgres | MongoDB |
@@ -75,19 +58,19 @@ backend/
   CommonErrors/    shared kernel: the errors every layer can raise (no HTTP knowledge)
   UserLogin/       accounts
     domain/          User entity, account rules (valid username/email, password strength)
-    application/     UserManager (register, authenticate, Google sign-in) + Ports (UserRepository, PasswordHasher)
+    application/     UserManager (register, authenticate, edit) + Ports (UserRepository, PasswordHasher)
     infrastructure/  UserDatabaseAdapter (Postgres), ScryptPasswordHasher
   WI29_Server/     files, sessions, HTTP
     domain/          Folder / FileEntry, naming and file-type rules, size limit
-    application/     FileService, AuthService, GoogleSignIn + Ports (repositories, content store, sessions, Google)
-    infrastructure/  Postgres repositories, MongoDB content store, in-memory sessions/limiters, Google client, Settings
+    application/     FileService, AuthService + Ports (repositories, content store, sessions)
+    infrastructure/  Postgres repositories, MongoDB content store, in-memory sessions/limiters, Settings
     interface/       FastAPI routers, request schemas, the error-to-HTTP-status mapping
     Container.py     composition root: the only place that builds the concrete classes
     httpAPI.py       builds the FastAPI app from the container; main.py starts uvicorn + the Cloudflare tunnel
 ```
 
 - **domain** imports nothing from the other layers and does no I/O; **application** imports only the domain, the shared `CommonErrors` and the ports it defines (it reaches another context such as accounts through a port, never by importing its classes); **infrastructure** and **interface** implement/consume those ports and never import each other; only `Container.py` builds concrete infrastructure. `backend/tests/test_architecture.py` fails if an import breaks any of this.
-- Use cases are tested against small in-memory fakes (`backend/tests/Fakes.py`), with no database: from the `backend` folder run `python -m pytest tests` (needs `pytest`). Swapping Postgres, MongoDB or Google means writing a new class for a port and changing `Container.py`.
+- Use cases are tested against small in-memory fakes (`backend/tests/Fakes.py`), with no database: from the `backend` folder run `python -m pytest tests` (needs `pytest`). Swapping Postgres or MongoDB means writing a new class for a port and changing `Container.py`.
 - Business rules live in the use cases, not in the routes: for example, every sign-in gives the user their default folders (the `onSignedIn` hook that `Container.py` passes to `AuthService`), and listing files creates any that are missing.
 - Frontend (`app/`), same direction of dependencies:
   - `domain/`: pure rules (sorting, unique names, upload checks); `types.ts` holds the shared data types.

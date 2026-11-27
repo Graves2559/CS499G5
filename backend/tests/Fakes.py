@@ -1,15 +1,16 @@
 '''
 Fakes.py
 
-Small in-memory implementations of the ports, so the use cases can be tested without Postgres, MongoDB or Google.
+Small in-memory implementations of the ports, so the use cases can be tested without Postgres, MongoDB or
+Google.
 '''
 import itertools
 from typing import Dict, List, Optional, Tuple
 
 from CommonErrors.Errors import ConflictError, NotFoundError
+from Security.domain.KeyRecord import KeyRecord, KeyStatus
 from UserLogin.domain.User import User
 from WI29_Server.domain.Files import FileEntry, Folder
-from WI29_Server.domain.Identity import ProviderProfile
 
 
 class FakeHasher:
@@ -27,7 +28,6 @@ class FakeHasher:
 class FakeUsers:
     def __init__(self):
         self.users: Dict[str, User] = {}
-        self.googleIds: Dict[str, str] = {}
 
     def get(self, username):
         return self.users.get(username)
@@ -39,18 +39,16 @@ class FakeUsers:
                 return user.getUsername()
         return None
 
-    def findUsernameByGoogleID(self, googleID):
-        return self.googleIds.get(googleID)
-
-    def add(self, user, googleID=None):
+    def add(self, user):
         if self.findUsername(user.getUsername()) or self.findUsername(user.getEmail()):
             raise ConflictError("That username or email is already in use.")
         self.users[user.getUsername()] = user
-        if googleID:
-            self.googleIds[googleID] = user.getUsername()
 
     def update(self, username, email=None, encryptChoice=None):
         pass
+
+    def replaceSecurityQuestions(self, username, questions):
+        pass  # the User object already holds the hashes in memory; no separate persistence layer here
 
     def updatePassword(self, user):
         self.users[user.getUsername()] = user
@@ -111,14 +109,14 @@ class FakeFileIndex:
         else:
             self.rows[(username, entry.id)] = FileEntry(old.id, old.parentId, old.name, old.description,
                                                         entry.contentType, entry.size, old.favorite,
-                                                        entry.dateModified, entry.mediaId)
+                                                        entry.dateModified, entry.mediaId, entry.keyVersion)
 
     def update(self, username, entryId, name, description, favorite, dateModified):
         old = self.rows[(username, entryId)]
         self.rows[(username, entryId)] = FileEntry(
             old.id, old.parentId, name, description, old.contentType, old.size,
             old.favorite if favorite is None else favorite,
-            old.dateModified if dateModified is None else dateModified, old.mediaId)
+            old.dateModified if dateModified is None else dateModified, old.mediaId, old.keyVersion)
 
     def nameTaken(self, username, parentId, name, exceptId):
         return any(u == username and e.parentId == parentId and e.name.lower() == name.lower() and e.id != exceptId
@@ -144,22 +142,30 @@ class FakeContent:
         self.blobs.pop(mediaId, None)
 
 
-class FakeProvider:
-    def __init__(self, profile: Optional[ProviderProfile] = None, configured: bool = True):
-        self.profile = profile
-        self._configured = configured
-        self.lastCodeVerifier = None
+class FakeKeyRecords:
+    def __init__(self):
+        self.rows: Dict[Tuple[str, int], KeyRecord] = {}
 
-    @property
-    def configured(self):
-        return self._configured
+    def add(self, keyRecord: KeyRecord):
+        self.rows[(keyRecord.username, keyRecord.version)] = keyRecord
 
-    def authorizationUrl(self, redirectUri, state, codeChallenge):
-        return f"https://google.test/auth?state={state}&challenge={codeChallenge}&redirect={redirectUri}"
+    def get(self, username, version):
+        return self.rows.get((username, version))
 
-    def fetchProfile(self, code, redirectUri, codeVerifier):
-        self.lastCodeVerifier = codeVerifier
-        return self.profile
+    def getCurrent(self, username):
+        for record in self.rows.values():
+            if record.username == username and record.status == KeyStatus.ACTIVE:
+                return record
+        return None
+
+    def getAll(self, username):
+        return [record for record in self.rows.values() if record.username == username]
+
+    def update(self, keyRecord: KeyRecord):
+        self.rows[(keyRecord.username, keyRecord.version)] = keyRecord
+
+    def deleteAll(self, username):
+        self.rows = {key: record for key, record in self.rows.items() if record.username != username}
 
 
 class Clock:

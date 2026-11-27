@@ -24,11 +24,6 @@ services:
       # The single login for now (stored hashed in the database). Change in .env; remove the user's row to re-seed.
       ADMIN_USERNAME: ${ADMIN_USERNAME:-adminUsername}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-password}
-      # "Continue with Google" (see README). Empty = the button reports that Google sign-in is not set up.
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
-      GOOGLE_DISCOVERY_URL: ${GOOGLE_DISCOVERY_URL:-https://accounts.google.com/.well-known/openid-configuration}
     depends_on:
       postgres:
         condition: service_healthy

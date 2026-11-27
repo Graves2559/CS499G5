@@ -1,8 +1,8 @@
 '''
 MemoryStores.py
 
-In-memory implementations of the SessionStore, AttemptLimiter and PendingLogins ports. State is per server
-process (it is lost on restart, and not shared between several server processes).
+In-memory implementations of the SessionStore and AttemptLimiter ports. State is per server process (it is
+lost on restart, and not shared between several server processes).
 '''
 import secrets
 import threading
@@ -73,27 +73,3 @@ class SlidingWindowLimiter:
             self._attempts.pop(key, None)
         return recent
 
-
-class InMemoryPendingLogins:
-    def __init__(self, ttlSeconds: int, capacity: int = 1000, clock: Callable[[], float] = time.time):
-        self.ttlSeconds = ttlSeconds
-        self.capacity = capacity
-        self.clock = clock
-        self._pending: Dict[str, Tuple[str, str, float]] = {}
-        self._lock = threading.Lock()
-
-    def add(self, state: str, codeVerifier: str, redirectUri: str) -> bool:
-        now = self.clock()
-        with self._lock:
-            self._pending = {s: v for s, v in self._pending.items() if v[2] > now}
-            if len(self._pending) >= self.capacity:
-                return False
-            self._pending[state] = (codeVerifier, redirectUri, now + self.ttlSeconds)
-            return True
-
-    def pop(self, state: str) -> Optional[Tuple[str, str]]:
-        with self._lock:
-            pending = self._pending.pop(state, None)
-        if pending is None or pending[2] < self.clock():
-            return None
-        return pending[0], pending[1]

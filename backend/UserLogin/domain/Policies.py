@@ -34,9 +34,3 @@ def requireValidUsername(username: str):
 def requireValidEmail(email: str):
     if not _EMAIL_PATTERN.match(email) or len(email) > _MAX_EMAIL_LENGTH:
         raise ValidationError("Enter a valid email address.")
-
-
-# Base for a username made from a Google profile: only allowed characters, 3-24 long.
-def usernameBase(name: str, email: str) -> str:
-    base = re.sub(r"[^A-Za-z0-9._-]", "", name) or re.sub(r"[^A-Za-z0-9._-]", "", email.split("@")[0]) or "user"
-    return (base + "user")[:24] if len(base) < 3 else base[:24]

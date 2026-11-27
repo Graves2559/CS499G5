@@ -43,6 +43,9 @@ class FileEntry:
     favorite: bool = False
     dateModified: Optional[str] = None
     mediaId: Optional[str] = None  # where the content lives in the content store; never sent to clients
+    # Which Security KeyRecord version wrapped the dataKey used to encrypt this entry's content; None if the
+    # content is stored unencrypted. Never sent to clients.
+    keyVersion: Optional[int] = None
 
 
 def requireValidId(value: str):

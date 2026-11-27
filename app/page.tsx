@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { Plus, Settings } from "lucide-react";
 import type { InputType, OutputType, Preferences } from "./types";
 import { uploadProblem } from "./domain/uploads";
@@ -33,11 +33,6 @@ export default function Home() {
   // The one place where the application layer is connected to the infrastructure (the server gateway).
   const auth = useAuth(api);
   const files = useFiles(api, !!auth.user, setError);
-
-  useEffect(() => {
-    if (!auth.redirectError) return;
-    setAuthMode("signin"); setAuthNotice(auth.redirectError); dialog.current?.showModal();
-  }, [auth.redirectError]);
 
   async function signIn(username: string, password: string) { await auth.signIn(username, password); dialog.current?.close(); }
   async function signUp(username: string, email: string, password: string) { await auth.signUp(username, email, password); dialog.current?.close(); }

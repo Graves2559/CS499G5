@@ -16,9 +16,7 @@
 CREATE TABLE users (
     username        TEXT PRIMARY KEY,               -- unique; the identifier every other table references
     email           TEXT NOT NULL UNIQUE,
-    password_hash   TEXT,                           -- hashed login credential; NOT the private key passphrase
-                                                      -- NULL for accounts that only sign in with Google
-    google_id       TEXT UNIQUE,                    -- Google's stable account id ("sub"); NULL for password-only accounts
+    password_hash   TEXT NOT NULL,                   -- hashed login credential; NOT the private key passphrase
     encrypt_choice  BOOLEAN NOT NULL DEFAULT true,   -- whether this user's journal entries get encrypted
                                                       -- (see User.py/EncryptionManager.Encrypt -- encrypt()
                                                       -- refuses when false; decrypt() persists content back
